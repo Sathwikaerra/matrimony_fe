@@ -101,7 +101,7 @@ export default function Landing() {
                         className="flex flex-col md:flex-row items-center justify-center gap-5 mt-12"
                     >
                         <button
-                            onClick={() => navigate("/login")}
+                            onClick={() => navigate("/start")}
                             className="bg-[#C9A84C] text-black px-10 py-4 rounded-full uppercase tracking-[0.2em] text-sm font-semibold hover:scale-105 transition-all"
                         >
                             Get Started

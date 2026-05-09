@@ -44,8 +44,7 @@ export default function App() {
         ) : (
           <>
             <Route path="/" element={<Landing />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
+            <Route path="/start" element={<AuthGate />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </>
         )}
