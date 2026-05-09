@@ -50,17 +50,10 @@ export default function Navbar() {
 
   return (
     <>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed top-4 left-4 z-[100] lg:hidden p-2.5 rounded-xl"
-        style={{ background: "#7B1C1C", color: "#FFF5E6" }}
-      >
-        {isOpen ? <FaTimes size={20} /> : <FaBars size={20} />}
-      </button>
+      
 
       <div
-        className={`fixed top-0 left-0 h-screen flex flex-col z-50 transition-all duration-300
-          ${isOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 w-[240px]`}
+         className={`hidden lg:flex fixed top-0 left-0 h-screen flex-col z-50 transition-all duration-300 w-[240px]`}
         style={{ background: "#1A0A0A", borderRight: "1px solid #3D1515" }}
       >
         {/* Logo */}
@@ -140,12 +133,69 @@ export default function Navbar() {
         </div>
       </div>
 
-      {isOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden"
-          style={{ background: "rgba(0,0,0,0.7)" }}
-          onClick={() => setIsOpen(false)}
-        />
-      )}
+      {/* Mobile Bottom Navbar */}
+<div
+  className="lg:hidden fixed bottom-0 left-0 right-0 z-50"
+  style={{
+    background: "rgba(20, 5, 5, 0.96)",
+    backdropFilter: "blur(14px)",
+    borderTop: "1px solid #3D1515",
+  }}
+>
+  <div className="flex items-center justify-around py-3">
+    {navItems.map(({ to, icon, label, badge }) => {
+      const active = location.pathname === to;
+
+      return (
+        <Link
+          key={to}
+          to={to}
+          className="flex flex-col items-center justify-center relative"
+          style={{
+            color: active ? "#C9A84C" : "#8B6B52",
+            minWidth: 60,
+          }}
+        >
+          <div className="relative">
+            {icon}
+
+            {badge > 0 && (
+              <span
+                style={{
+                  position: "absolute",
+                  top: -7,
+                  right: -10,
+                  background: "#7B1C1C",
+                  color: "#FFF",
+                  fontSize: 9,
+                  borderRadius: 20,
+                  padding: "1px 5px",
+                  fontWeight: 700,
+                  minWidth: 16,
+                  textAlign: "center",
+                }}
+              >
+                {badge}
+              </span>
+            )}
+          </div>
+
+          <span
+            style={{
+              fontSize: 10,
+              marginTop: 4,
+              fontWeight: active ? 600 : 400,
+            }}
+          >
+            {label}
+          </span>
+        </Link>
+      );
+    })}
+  </div>
+</div>
+
+     
     </>
   );
 }
