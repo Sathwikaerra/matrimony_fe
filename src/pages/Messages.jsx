@@ -1,6 +1,7 @@
 // pages/Messages.jsx
 import { useEffect, useState, useRef, useCallback } from 'react';
 import axios from 'axios';
+import { useSelector } from 'react-redux';
 import socket from '../services/socket';
 import { IoSend, IoTrash, IoCheckmarkDone, IoArrowBack } from 'react-icons/io5';
 import { FaSearch, FaTimes } from 'react-icons/fa';
@@ -33,8 +34,8 @@ const groupByDate = (messages) => {
   return groups;
 };
 
-export default function Messages() {
-  const senderId = localStorage.getItem('userId');
+  const { token, userId, user } = useSelector((state) => state.auth);
+  const senderName = user?.name || 'Someone';
 
   const [recentChats, setRecentChats] = useState([]);
   const [searchUsers, setSearchUsers] = useState([]);
@@ -132,7 +133,7 @@ export default function Messages() {
       const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/messages/send`, messageData);
       const saved = res.data.messageData;
       setMessages((prev) => prev.map((m) => (m._id === tempId ? saved : m)));
-      socket.emit('sendMessage', saved);
+      socket.emit('sendMessage', { ...saved, senderName });
       socket.emit('stopTyping', { senderId, receiverId: selectedUser._id });
       fetchRecentChats();
     } catch (err) {
@@ -249,19 +250,41 @@ export default function Messages() {
             </div>
 
             {/* Messages area */}
-            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 custom-scrollbar">
               {Object.entries(grouped).map(([date, msgs]) => (
                 <div key={date}>
-                  <div className="text-center my-4 text-[10px] text-[#6B5030]">{date}</div>
+                  <div className="text-center my-6 text-[10px] text-[#6B5030] uppercase tracking-widest">{date}</div>
                   {msgs.map((msg, i) => (
-                    <div key={i} className={`flex mb-2 ${isMine(msg) ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[75%] px-4 py-2 rounded-2xl text-sm ${isMine(msg) ? 'bg-[#7B1C1C] text-white' : 'bg-[#1F0A0A] text-[#FFF5E6] border border-[#3D1515]'}`}>
+                    <div 
+                      key={i} 
+                      className={`flex mb-3 ${isMine(msg) ? 'justify-end' : 'justify-start'} animate-slide-in`}
+                      style={{ animationDelay: `${i * 0.05}s` }}
+                    >
+                      <div className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-[13px] shadow-lg ${
+                        isMine(msg) 
+                          ? 'bg-gradient-to-br from-[#7B1C1C] to-[#5A1515] text-white rounded-tr-none' 
+                          : 'bg-[#1F0A0A] text-[#FFF5E6] border border-[#3D1515] rounded-tl-none'
+                      }`}>
                         {msg.message}
+                        <div className={`text-[9px] mt-1 opacity-50 ${isMine(msg) ? 'text-right' : 'text-left'}`}>
+                          {formatTime(msg.createdAt)}
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
               ))}
+              
+              {isPartnerTyping && (
+                <div className="flex justify-start animate-fade-in">
+                  <div className="bg-[#1F0A0A] border border-[#3D1515] px-4 py-2.5 rounded-2xl rounded-tl-none flex items-center gap-1">
+                    <div className="w-1.5 h-1.5 bg-[#C9A84C] rounded-full animate-bounce"></div>
+                    <div className="w-1.5 h-1.5 bg-[#C9A84C] rounded-full animate-bounce [animation-delay:0.2s]"></div>
+                    <div className="w-1.5 h-1.5 bg-[#C9A84C] rounded-full animate-bounce [animation-delay:0.4s]"></div>
+                  </div>
+                </div>
+              )}
+              
               <div ref={messagesEndRef} />
             </div>
 
