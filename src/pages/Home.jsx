@@ -9,6 +9,7 @@ import {
   FaStar, FaRegStar, FaSearch, FaTimes, FaClock,
   FaPaperPlane, FaTrash, FaChevronDown, FaChevronUp,
 } from "react-icons/fa";
+import { IoCheckmarkDone } from "react-icons/io5";
 
 // ─── debounce ────────────────────────────────────────────────────────────────
 function useDebounce(value, delay = 350) {
@@ -268,6 +269,7 @@ export default function Home() {
   // Connections
   const [requestedIds, setRequestedIds] = useState([]);
   const [requestedData, setRequestedData] = useState({}); // { receiverId: requestId }
+  const [connectedIds, setConnectedIds] = useState([]); // Array of connected user IDs
   const [pendingInterestIds, setPendingInterestIds] = useState([]);
 
   // Like animation tracker
@@ -306,8 +308,20 @@ export default function Home() {
     } catch (err) { console.error(err); }
   };
 
+  const fetchConnectedIds = async () => {
+    if (!token) return;
+    try {
+      const res = await axios.get(
+        `${import.meta.env.VITE_API_URL}/api/connections/my`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setConnectedIds(res.data.connections.map(c => c.user?._id || c.user));
+    } catch (err) { console.error(err); }
+  };
+
   useEffect(() => {
     fetchSentIds();
+    fetchConnectedIds();
   }, []);
 
   // ── Interested handler ────────────────────────────────────────────────────
@@ -602,25 +616,29 @@ export default function Home() {
 
             {/* Interested / Connect */}
             <button
-              onClick={() => handleInterested(post.id)}
+              onClick={() => !connectedIds.includes(post.id) && handleInterested(post.id)}
               disabled={pendingInterestIds.includes(post.id)}
               style={{
                 display: "flex", alignItems: "center", gap: 6,
-                background: "none", border: "none", cursor: "pointer", padding: "6px 10px",
-                color: requestedIds.includes(post.id) ? "#C9A84C" : "#6B5030",
+                background: "none", border: "none", 
+                cursor: connectedIds.includes(post.id) ? "default" : "pointer", 
+                padding: "6px 10px",
+                color: connectedIds.includes(post.id) ? "#22C55E" : (requestedIds.includes(post.id) ? "#C9A84C" : "#6B5030"),
                 transition: "color 0.2s",
                 opacity: pendingInterestIds.includes(post.id) ? 0.6 : 1,
               }}
             >
               {pendingInterestIds.includes(post.id) ? (
                 <div style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid #3D1515", borderTopColor: "#C9A84C", animation: "spin 0.7s linear infinite" }} />
+              ) : connectedIds.includes(post.id) ? (
+                <IoCheckmarkDone size={20} style={{ color: "#22C55E" }} />
               ) : requestedIds.includes(post.id) ? (
                 <FaStar size={20} style={{ color: "#C9A84C", filter: "drop-shadow(0 0 5px #C9A84C88)" }} />
               ) : (
                 <FaRegStar size={20} />
               )}
               <span style={{ fontSize: 11, fontWeight: 600 }}>
-                {pendingInterestIds.includes(post.id) ? "Wait..." : requestedIds.includes(post.id) ? "Cancel Request" : "Connect"}
+                {pendingInterestIds.includes(post.id) ? "Wait..." : connectedIds.includes(post.id) ? "Connected" : requestedIds.includes(post.id) ? "Cancel Request" : "Connect"}
               </span>
             </button>
           </div>
@@ -773,16 +791,17 @@ export default function Home() {
                       </p>
                     </div>
                     <button
-                      onClick={e => { e.stopPropagation(); handleInterested(user._id); }}
+                      onClick={e => { e.stopPropagation(); !connectedIds.includes(user._id) && handleInterested(user._id); }}
                       style={{
                         padding: "5px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600,
-                        cursor: "pointer", flexShrink: 0,
-                        background: requestedIds.includes(user._id) ? "rgba(201,168,76,0.1)" : "linear-gradient(90deg, #7B1C1C, #A0341E)",
-                        color: requestedIds.includes(user._id) ? "#C9A84C" : "#FFF5E6",
-                        border: requestedIds.includes(user._id) ? "1px solid #C9A84C44" : "none",
+                        cursor: connectedIds.includes(user._id) ? "default" : "pointer", 
+                        flexShrink: 0,
+                        background: connectedIds.includes(user._id) ? "rgba(34,197,94,0.1)" : (requestedIds.includes(user._id) ? "rgba(201,168,76,0.1)" : "linear-gradient(90deg, #7B1C1C, #A0341E)"),
+                        color: connectedIds.includes(user._id) ? "#22C55E" : (requestedIds.includes(user._id) ? "#C9A84C" : "#FFF5E6"),
+                        border: connectedIds.includes(user._id) ? "1px solid #22C55E44" : (requestedIds.includes(user._id) ? "1px solid #C9A84C44" : "none"),
                       }}
                     >
-                      {requestedIds.includes(user._id) ? "✓" : "❤"}
+                      {connectedIds.includes(user._id) ? "Connected" : (requestedIds.includes(user._id) ? "✓" : "❤")}
                     </button>
                   </div>
                 ))}
