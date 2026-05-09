@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { FaBell, FaPaperPlane, FaHeart, FaTimes, FaEnvelope } from "react-icons/fa";
+import socket from "../services/socket";
 
 const API = import.meta.env.VITE_API_URL;
 const token = () => localStorage.getItem("token");
@@ -78,7 +79,19 @@ export default function Connections() {
         setLoading(false);
     }, []);
 
-    useEffect(() => { fetchAll(); }, [fetchAll]);
+    useEffect(() => { 
+        fetchAll();
+        
+        // Real-time updates
+        socket.on("notificationReceived", () => {
+            console.log("Real-time update triggered via socket");
+            fetchAll();
+        });
+
+        return () => {
+            socket.off("notificationReceived");
+        };
+    }, [fetchAll]);
 
     const accept = async (connectionId) => {
         await axios.patch(`${API}/api/connections/accept/${connectionId}`, {}, { headers: headers() });

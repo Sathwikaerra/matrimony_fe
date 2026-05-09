@@ -10,6 +10,7 @@ import {
   FaPaperPlane, FaTrash, FaChevronDown, FaChevronUp,
 } from "react-icons/fa";
 import { IoCheckmarkDone } from "react-icons/io5";
+import socket from "../services/socket";
 
 // ─── debounce ────────────────────────────────────────────────────────────────
 function useDebounce(value, delay = 350) {
@@ -322,6 +323,17 @@ export default function Home() {
   useEffect(() => {
     fetchSentIds();
     fetchConnectedIds();
+
+    // Real-time updates for connection statuses
+    const handleSync = () => {
+      fetchSentIds();
+      fetchConnectedIds();
+    };
+
+    socket.on("notificationReceived", handleSync);
+    return () => {
+      socket.off("notificationReceived", handleSync);
+    };
   }, []);
 
   // ── Interested handler ────────────────────────────────────────────────────
