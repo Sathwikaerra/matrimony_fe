@@ -16,6 +16,7 @@ import Messages from "./pages/Messages";
 import Connections from "./pages/Connections";
 import Profile from "./pages/Profile";
 import Layout from "./component/Layout";
+import Landing from "./pages/Landing";
 
 function AuthGate() {
   const [showSignup, setShowSignup] = useState(false);
@@ -42,7 +43,9 @@ export default function App() {
           </>
         ) : (
           <>
-            <Route path="/" element={<AuthGate />} />
+            <Route path="/" element={<Landing />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </>
         )}
