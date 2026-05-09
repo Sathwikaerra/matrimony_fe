@@ -4,27 +4,21 @@ import { useState } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import io from 'socket.io-client';
+import { initNotifications } from "../services/notificationService"; // ← ADDED
 
 const socket = io(`${import.meta.env.VITE_API_URL}`);
 
 export default function Login() {
 
-  // ✅ State for form fields
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
 
-  // ✅ Handle input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
-
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
-
 
   const navigate = useNavigate();
 
@@ -44,8 +38,15 @@ export default function Login() {
 
       localStorage.setItem("token", response.data.token);
       localStorage.setItem("userId", response.data.user.id);
-      const userId = localStorage.getItem("userId")
+
+      const userId = response.data.user.id;
+
       socket.emit('registerUser', userId);
+
+      // ── Enable push notifications ──────────────────────────────────
+      await initNotifications(userId); // ← ADDED — browser will ask "Allow notifications?"
+      // ──────────────────────────────────────────────────────────────
+
       navigate("/home");
 
     } catch (error) {
@@ -66,10 +67,8 @@ export default function Login() {
           Continue your beautiful journey
         </p>
 
-        {/* ✅ Form */}
         <form onSubmit={handleLogin} className="space-y-6">
 
-          {/* Email */}
           <input
             type="email"
             name="email"
@@ -79,7 +78,6 @@ export default function Login() {
             className="w-full bg-transparent border border-[#D4AF37]/40 rounded-xl px-5 py-4 text-white placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
           />
 
-          {/* Password */}
           <input
             type="password"
             name="password"
@@ -89,18 +87,17 @@ export default function Login() {
             className="w-full bg-transparent border border-[#D4AF37]/40 rounded-xl px-5 py-4 text-white placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
           />
 
-          {/* Login Button */}
           <button
             type="submit"
             className="w-full bg-gradient-to-r from-[#D4AF37] to-[#C97B2B] text-[#3A0A10] py-4 rounded-xl font-bold hover:scale-105 transition duration-300"
           >
             Login
           </button>
+
         </form>
 
-        {/* Signup Link */}
         <p className="text-center text-[#F8F1E7] mt-8">
-          Don’t have an account?{" "}
+          Don't have an account?{" "}
           <Link
             to="/signup"
             className="text-[#D4AF37] font-semibold hover:underline"

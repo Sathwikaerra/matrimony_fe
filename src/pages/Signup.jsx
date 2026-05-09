@@ -3,10 +3,10 @@
 import { useState } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
+import { initNotifications } from "../services/notificationService"; // ← ADDED
 
 export default function Signup() {
 
-  // ✅ State for form fields
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -14,58 +14,29 @@ export default function Signup() {
     confirmPassword: "",
   });
 
-  // ✅ Handle input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
-
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
-
-  // ✅ Handle Signup
 
   const navigate = useNavigate();
 
   const handleSignup = async (e) => {
-
     e.preventDefault();
 
     console.log("Signup Data:", formData);
 
-
-
-    // Validation
-    if (
-      !formData.fullName ||
-      !formData.email ||
-      !formData.password ||
-      !formData.confirmPassword
-    ) {
-
+    if (!formData.fullName || !formData.email || !formData.password || !formData.confirmPassword) {
       alert("Please fill all fields");
-
       return;
     }
 
-
-
-    // Password Match Check
-    if (
-      formData.password !==
-      formData.confirmPassword
-    ) {
-
+    if (formData.password !== formData.confirmPassword) {
       alert("Passwords do not match");
-
       return;
     }
-
-
 
     try {
-
       const response = await axios.post(
         `${import.meta.env.VITE_API_URL}/auth/signup`,
         {
@@ -75,38 +46,23 @@ export default function Signup() {
         }
       );
 
+      console.log("Signup Success:", response.data);
 
+      // Save Token & userId
+      localStorage.setItem("token", response.data.token);
+      localStorage.setItem("userId", response.data.user.id);
 
-      console.log(
-        "Signup Success:",
-        response.data
-      );
-
-
-
-      // Save Token
-      localStorage.setItem(
-        "token",
-        response.data.token
-      );
-
-
+      // ── Enable push notifications for new user ─────────────────────
+      await initNotifications(response.data.user.id); // ← ADDED
+      // ──────────────────────────────────────────────────────────────
 
       alert("Signup Successful");
 
-
-
-      // Navigate Home
       navigate("/home");
 
     } catch (error) {
-
       console.log(error);
-
-      alert(
-        error.response?.data?.message ||
-        "Signup Failed"
-      );
+      alert(error.response?.data?.message || "Signup Failed");
     }
   };
 
@@ -123,10 +79,8 @@ export default function Signup() {
           Begin your beautiful journey
         </p>
 
-        {/* ✅ Form */}
         <form onSubmit={handleSignup} className="space-y-6">
 
-          {/* Full Name */}
           <input
             type="text"
             name="fullName"
@@ -136,7 +90,6 @@ export default function Signup() {
             className="w-full bg-transparent border border-[#D4AF37]/40 rounded-xl px-5 py-4 text-white placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
           />
 
-          {/* Email */}
           <input
             type="email"
             name="email"
@@ -146,7 +99,6 @@ export default function Signup() {
             className="w-full bg-transparent border border-[#D4AF37]/40 rounded-xl px-5 py-4 text-white placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
           />
 
-          {/* Password */}
           <input
             type="password"
             name="password"
@@ -156,7 +108,6 @@ export default function Signup() {
             className="w-full bg-transparent border border-[#D4AF37]/40 rounded-xl px-5 py-4 text-white placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
           />
 
-          {/* Confirm Password */}
           <input
             type="password"
             name="confirmPassword"
@@ -166,16 +117,15 @@ export default function Signup() {
             className="w-full bg-transparent border border-[#D4AF37]/40 rounded-xl px-5 py-4 text-white placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
           />
 
-          {/* Signup Button */}
           <button
             type="submit"
             className="w-full bg-gradient-to-r from-[#D4AF37] to-[#C97B2B] text-[#3A0A10] py-4 rounded-xl font-bold hover:scale-105 transition duration-300"
           >
             Signup
           </button>
+
         </form>
 
-        {/* Login Link */}
         <p className="text-center text-[#F8F1E7] mt-8">
           Already have an account?{" "}
           <Link
