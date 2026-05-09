@@ -33,8 +33,9 @@ const groupByDate = (messages) => {
   });
   return groups;
 };
-
+export default function Messages() {
   const { token, userId, user } = useSelector((state) => state.auth);
+  const senderId = userId || localStorage.getItem('userId');
   const senderName = user?.name || 'Someone';
 
   const [recentChats, setRecentChats] = useState([]);
