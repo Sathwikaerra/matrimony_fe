@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import InfiniteScroll from "react-infinite-scroll-component";
-import Navbar from "../component/Navbar";
 import UserProfileDrawer from "../component/UserProfileDrawer";
 import {
   FaHeart, FaRegHeart, FaRegCommentDots,
@@ -45,10 +44,7 @@ function clearAllRecent() {
   return [];
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-
 export default function Home() {
-
   // Feed
   const [posts, setPosts] = useState([]);
   const [hasMore, setHasMore] = useState(true);
@@ -219,7 +215,6 @@ export default function Home() {
       className="overflow-hidden flex flex-col"
       style={{ background: "#150707", border: "1px solid #3D1515", borderRadius: 16 }}
     >
-      {/* Card header */}
       <div
         className="flex items-center justify-between p-4"
         onClick={() => openProfile({ _id: post.id, name: post.name, photos: [post.profile], city: post.city })}
@@ -244,7 +239,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Image */}
       <div style={{ position: "relative", flex: 1 }}>
         <img
           src={post.image}
@@ -260,7 +254,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Actions */}
       <div className="p-4">
         <div className="flex items-center gap-5 mb-3">
           <button
@@ -308,236 +301,178 @@ export default function Home() {
     </div>
   );
 
-  // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div style={{ background: "#0D0404", minHeight: "100vh", color: "#FFF5E6" }}>
-      <Navbar />
-
-        {/* Mobile Header */}
-<div
-  className="lg:hidden fixed top-0 left-0 right-0 z-40 px-4 py-3"
-  style={{
-    background: "rgba(13,4,4,0.96)",
-    backdropFilter: "blur(10px)",
-    borderBottom: "1px solid #3D1515",
-  }}
->
-  <div className="flex items-center justify-between">
-    <div>
-      <h1
-        style={{
-          color: "#E8C96D",
-          fontSize: 18,
-          fontWeight: 700,
-          margin: 0,
-        }}
-      >
-        ❋ Vivaah
-      </h1>
-      <p
-        style={{
-          color: "#8B6B52",
-          fontSize: 10,
-          margin: 0,
-          letterSpacing: "0.15em",
-        }}
-      >
-        SACRED BONDS
-      </p>
-    </div>
-  </div>
-</div>
-
-      {/* Main content — pushed right of sidebar on desktop */}
-      <div className="lg:ml-[240px]">
-        <div className="w-full max-w-6xl mx-auto pt-20 lg:pt-8 px-4 lg:px-8 pb-20">
-
-          {/* Header */}
-          <div className="mb-6" style={{ borderBottom: "1px solid #3D1515", paddingBottom: 16 }}>
-            <h2 style={{ color: "#C9A84C", fontSize: 13, letterSpacing: "0.2em", margin: "0 0 2px" }}>❋ DISCOVER</h2>
-            <h1 style={{ color: "#FFF5E6", fontSize: 22, fontWeight: 600, margin: 0 }}>Find Your Life Partner</h1>
-          </div>
-
-          {/* ── SEARCH BAR ─────────────────────────────────────────────── */}
-          {/* On desktop: max-width so it doesn't stretch too wide */}
-          <div
-            ref={searchRef}
-            style={{ position: "relative", marginBottom: 24, zIndex: 40, maxWidth: 600 }}
-          >
-            {/* Input */}
-            <div style={{
-              display: "flex", alignItems: "center",
-              background: "#1F0A0A",
-              border: "1px solid",
-              borderColor: showDropdown ? "#5A2020" : "#3D1515",
-              borderRadius: (showRecentsPanel || showResultsPanel) ? "12px 12px 0 0" : 12,
-              padding: "10px 14px", gap: 10,
-              transition: "border-color 0.2s",
-            }}>
-              {searchLoading
-                ? <div style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid #3D1515", borderTopColor: "#C9A84C", animation: "spin 0.7s linear infinite", flexShrink: 0 }} />
-                : <FaSearch size={14} style={{ color: "#6B5030", flexShrink: 0 }} />
-              }
-              <input
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                onFocus={() => setShowDropdown(true)}
-                placeholder="Search by name or email…"
-                style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: "#FFF5E6", fontSize: 14, caretColor: "#C9A84C" }}
-              />
-              {searchQuery && (
-                <button onClick={clearSearch} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, color: "#6B5030", display: "flex" }}>
-                  <FaTimes size={13} />
-                </button>
-              )}
-            </div>
-
-            {/* Dropdown */}
-            {(showRecentsPanel || showResultsPanel) && (
-              <div style={{
-                position: "absolute", top: "100%", left: 0, right: 0,
-                background: "#1A0707",
-                border: "1px solid #3D1515", borderTop: "1px solid #2A0F0F",
-                borderRadius: "0 0 12px 12px",
-                maxHeight: 360, overflowY: "auto", zIndex: 50,
-              }}>
-                {/* Recent searches */}
-                {showRecentsPanel && (
-                  <>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px 6px" }}>
-                      <span style={{ color: "#6B5030", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase" }}>Recent</span>
-                      <button
-                        onClick={() => setRecentSearches(clearAllRecent())}
-                        style={{ background: "none", border: "none", cursor: "pointer", color: "#5A2020", fontSize: 11, padding: 0 }}
-                      >Clear all</button>
-                    </div>
-                    {recentSearches.map((user, i) => (
-                      <div
-                        key={user._id}
-                        onClick={() => { setDrawerUserId(user._id); setShowDropdown(false); }}
-                        style={{
-                          display: "flex", alignItems: "center", gap: 12,
-                          padding: "9px 14px", cursor: "pointer",
-                          borderBottom: i < recentSearches.length - 1 ? "1px solid #1F0A0A" : "none",
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.background = "#220A0A"}
-                        onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                      >
-                        <FaClock size={12} style={{ color: "#3D1515", flexShrink: 0 }} />
-                        <div style={{ padding: 1.5, borderRadius: "50%", background: "linear-gradient(135deg, #5A2020, #3D1515)", flexShrink: 0 }}>
-                          <img
-                            src={user.photos?.[0] || "https://images.unsplash.com/photo-1494790108377-be9c29b29330"}
-                            alt=""
-                            style={{ width: 34, height: 34, borderRadius: "50%", objectFit: "cover", border: "2px solid #1A0707", display: "block" }}
-                          />
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ color: "#C4A882", fontSize: 13, fontWeight: 500, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.name}</p>
-                          <p style={{ color: "#4A2020", fontSize: 11, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.city || user.email || ""}</p>
-                        </div>
-                        <button
-                          onClick={e => removeRecent(e, user._id)}
-                          style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "#3D1515", display: "flex", flexShrink: 0 }}
-                        ><FaTimes size={11} /></button>
-                      </div>
-                    ))}
-                  </>
-                )}
-
-                {/* Live results */}
-                {showResultsPanel && (
-                  <>
-                    {searchLoading && (
-                      <div style={{ padding: "14px", textAlign: "center", color: "#6B5030", fontSize: 13 }}>Searching…</div>
-                    )}
-                    {!searchLoading && searchResults.length === 0 && debouncedQuery.trim() && (
-                      <div style={{ padding: "16px", textAlign: "center", color: "#6B5030", fontSize: 13 }}>
-                        No profiles found for "{searchQuery}"
-                      </div>
-                    )}
-                    {!searchLoading && searchResults.map((user, i) => (
-                      <div
-                        key={user._id}
-                        onClick={() => openProfile(user, true)}
-                        style={{
-                          display: "flex", alignItems: "center", gap: 12,
-                          padding: "10px 14px", cursor: "pointer",
-                          borderBottom: i < searchResults.length - 1 ? "1px solid #1F0A0A" : "none",
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.background = "#220A0A"}
-                        onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                      >
-                        <div style={{ padding: 2, borderRadius: "50%", background: "linear-gradient(135deg, #C9A84C, #7B1C1C)", flexShrink: 0 }}>
-                          <img
-                            src={user.photos?.[0] || "https://images.unsplash.com/photo-1494790108377-be9c29b29330"}
-                            alt=""
-                            style={{ width: 38, height: 38, borderRadius: "50%", objectFit: "cover", border: "2px solid #1A0707", display: "block" }}
-                          />
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ color: "#FFF5E6", fontSize: 14, fontWeight: 600, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.name}</p>
-                          <p style={{ color: "#6B5030", fontSize: 12, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {user.email}{user.city ? ` · ${user.city}` : ""}
-                          </p>
-                        </div>
-                        <button
-                          onClick={e => { e.stopPropagation(); handleInterested(user._id); }}
-                          style={{
-                            padding: "5px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600,
-                            cursor: "pointer", flexShrink: 0,
-                            background: requestedIds.includes(user._id) ? "rgba(201,168,76,0.1)" : "linear-gradient(90deg, #7B1C1C, #A0341E)",
-                            color: requestedIds.includes(user._id) ? "#C9A84C" : "#FFF5E6",
-                            border: requestedIds.includes(user._id) ? "1px solid #C9A84C44" : "none",
-                          }}
-                        >
-                          {requestedIds.includes(user._id) ? "✓" : "❤"}
-                        </button>
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-          {/* ── END SEARCH BAR ─────────────────────────────────────────── */}
-
-          {loading && (
-            <div style={{ textAlign: "center", paddingTop: 80 }}>
-              <div style={{ color: "#C9A84C", fontSize: 28, marginBottom: 12 }}>❋</div>
-              <p style={{ color: "#6B5030" }}>Finding matches for you...</p>
-            </div>
-          )}
-
-          {!loading && (
-            <InfiniteScroll
-              dataLength={posts.length}
-              next={fetchUsers}
-              hasMore={hasMore}
-              loader={<p style={{ textAlign: "center", color: "#6B5030", padding: 16, gridColumn: "1 / -1" }}>Loading more profiles...</p>}
-              endMessage={<p style={{ textAlign: "center", color: "#3D1515", padding: 16, gridColumn: "1 / -1" }}>❋ You've seen all profiles</p>}
-            >
-              {/*
-                Mobile  → 1 column
-                md      → 2 columns
-                xl      → 3 columns
-              */}
-              <div
-                style={{
-                  display: "grid",
-                  gap: 20,
-                  gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-                }}
-              >
-                {posts.map((post) => (
-                  <PostCard key={post.id} post={post} />
-                ))}
-              </div>
-            </InfiniteScroll>
-          )}
-        </div>
+    <>
+      <div className="mb-6" style={{ borderBottom: "1px solid #3D1515", paddingBottom: 16 }}>
+        <h2 style={{ color: "#C9A84C", fontSize: 13, letterSpacing: "0.2em", margin: "0 0 2px" }}>❋ DISCOVER</h2>
+        <h1 style={{ color: "#FFF5E6", fontSize: 22, fontWeight: 600, margin: 0 }}>Find Your Life Partner</h1>
       </div>
 
-      {/* Profile drawer */}
+      <div
+        ref={searchRef}
+        style={{ position: "relative", marginBottom: 24, zIndex: 40, maxWidth: 600 }}
+      >
+        <div style={{
+          display: "flex", alignItems: "center",
+          background: "#1F0A0A",
+          border: "1px solid",
+          borderColor: showDropdown ? "#5A2020" : "#3D1515",
+          borderRadius: (showRecentsPanel || showResultsPanel) ? "12px 12px 0 0" : 12,
+          padding: "10px 14px", gap: 10,
+          transition: "border-color 0.2s",
+        }}>
+          {searchLoading
+            ? <div style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid #3D1515", borderTopColor: "#C9A84C", animation: "spin 0.7s linear infinite", flexShrink: 0 }} />
+            : <FaSearch size={14} style={{ color: "#6B5030", flexShrink: 0 }} />
+          }
+          <input
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            onFocus={() => setShowDropdown(true)}
+            placeholder="Search by name or email…"
+            style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: "#FFF5E6", fontSize: 14, caretColor: "#C9A84C" }}
+          />
+          {searchQuery && (
+            <button onClick={clearSearch} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, color: "#6B5030", display: "flex" }}>
+              <FaTimes size={13} />
+            </button>
+          )}
+        </div>
+
+        {(showRecentsPanel || showResultsPanel) && (
+          <div style={{
+            position: "absolute", top: "100%", left: 0, right: 0,
+            background: "#1A0707",
+            border: "1px solid #3D1515", borderTop: "1px solid #2A0F0F",
+            borderRadius: "0 0 12px 12px",
+            maxHeight: 360, overflowY: "auto", zIndex: 50,
+          }}>
+            {showRecentsPanel && (
+              <>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px 6px" }}>
+                  <span style={{ color: "#6B5030", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase" }}>Recent</span>
+                  <button
+                    onClick={() => setRecentSearches(clearAllRecent())}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "#5A2020", fontSize: 11, padding: 0 }}
+                  >Clear all</button>
+                </div>
+                {recentSearches.map((user, i) => (
+                  <div
+                    key={user._id}
+                    onClick={() => { setDrawerUserId(user._id); setShowDropdown(false); }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 12,
+                      padding: "9px 14px", cursor: "pointer",
+                      borderBottom: i < recentSearches.length - 1 ? "1px solid #1F0A0A" : "none",
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#220A0A"}
+                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                  >
+                    <FaClock size={12} style={{ color: "#3D1515", flexShrink: 0 }} />
+                    <div style={{ padding: 1.5, borderRadius: "50%", background: "linear-gradient(135deg, #5A2020, #3D1515)", flexShrink: 0 }}>
+                      <img
+                        src={user.photos?.[0] || "https://images.unsplash.com/photo-1494790108377-be9c29b29330"}
+                        alt=""
+                        style={{ width: 34, height: 34, borderRadius: "50%", objectFit: "cover", border: "2px solid #1A0707", display: "block" }}
+                      />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ color: "#C4A882", fontSize: 13, fontWeight: 500, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.name}</p>
+                      <p style={{ color: "#4A2020", fontSize: 11, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.city || user.email || ""}</p>
+                    </div>
+                    <button
+                      onClick={e => removeRecent(e, user._id)}
+                      style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "#3D1515", display: "flex", flexShrink: 0 }}
+                    ><FaTimes size={11} /></button>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {showResultsPanel && (
+              <>
+                {searchLoading && (
+                  <div style={{ padding: "14px", textAlign: "center", color: "#6B5030", fontSize: 13 }}>Searching…</div>
+                )}
+                {!searchLoading && searchResults.length === 0 && debouncedQuery.trim() && (
+                  <div style={{ padding: "16px", textAlign: "center", color: "#6B5030", fontSize: 13 }}>
+                    No profiles found for "{searchQuery}"
+                  </div>
+                )}
+                {!searchLoading && searchResults.map((user, i) => (
+                  <div
+                    key={user._id}
+                    onClick={() => openProfile(user, true)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 12,
+                      padding: "10px 14px", cursor: "pointer",
+                      borderBottom: i < searchResults.length - 1 ? "1px solid #1F0A0A" : "none",
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#220A0A"}
+                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                  >
+                    <div style={{ padding: 2, borderRadius: "50%", background: "linear-gradient(135deg, #C9A84C, #7B1C1C)", flexShrink: 0 }}>
+                      <img
+                        src={user.photos?.[0] || "https://images.unsplash.com/photo-1494790108377-be9c29b29330"}
+                        alt=""
+                        style={{ width: 38, height: 38, borderRadius: "50%", objectFit: "cover", border: "2px solid #1A0707", display: "block" }}
+                      />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ color: "#FFF5E6", fontSize: 14, fontWeight: 600, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.name}</p>
+                      <p style={{ color: "#6B5030", fontSize: 12, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {user.email}{user.city ? ` · ${user.city}` : ""}
+                      </p>
+                    </div>
+                    <button
+                      onClick={e => { e.stopPropagation(); handleInterested(user._id); }}
+                      style={{
+                        padding: "5px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+                        cursor: "pointer", flexShrink: 0,
+                        background: requestedIds.includes(user._id) ? "rgba(201,168,76,0.1)" : "linear-gradient(90deg, #7B1C1C, #A0341E)",
+                        color: requestedIds.includes(user._id) ? "#C9A84C" : "#FFF5E6",
+                        border: requestedIds.includes(user._id) ? "1px solid #C9A84C44" : "none",
+                      }}
+                    >
+                      {requestedIds.includes(user._id) ? "✓" : "❤"}
+                    </button>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {loading && (
+        <div style={{ textAlign: "center", paddingTop: 80 }}>
+          <div style={{ color: "#C9A84C", fontSize: 28, marginBottom: 12 }}>❋</div>
+          <p style={{ color: "#6B5030" }}>Finding matches for you...</p>
+        </div>
+      )}
+
+      {!loading && (
+        <InfiniteScroll
+          dataLength={posts.length}
+          next={fetchUsers}
+          hasMore={hasMore}
+          loader={<p style={{ textAlign: "center", color: "#6B5030", padding: 16, gridColumn: "1 / -1" }}>Loading more profiles...</p>}
+          endMessage={<p style={{ textAlign: "center", color: "#3D1515", padding: 16, gridColumn: "1 / -1" }}>❋ No profiles</p>}
+        >
+          <div
+            style={{
+              display: "grid",
+              gap: 20,
+              gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+            }}
+          >
+            {posts.map((post) => (
+              <PostCard key={post.id} post={post} />
+            ))}
+          </div>
+        </InfiniteScroll>
+      )}
+
       {drawerUserId && (
         <UserProfileDrawer
           userId={drawerUserId}
@@ -548,6 +483,6 @@ export default function Home() {
       )}
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
+    </>
   );
 }

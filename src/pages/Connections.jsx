@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
 import axios from "axios";
-import Navbar from "../component/Navbar";
 import { FaBell, FaPaperPlane, FaHeart, FaTimes, FaEnvelope } from "react-icons/fa";
 
 const API = import.meta.env.VITE_API_URL;
@@ -19,52 +18,47 @@ export default function Connections() {
     const [data, setData] = useState({ received: [], sent: [], accepted: [], rejected: [] });
     const [loading, setLoading] = useState(true);
 
-    // ── Fetch all tabs ──────────────────────────────
-   // Replace fetchAll
-const fetchAll = useCallback(async () => {
-    setLoading(true);
-    try {
-        const [pendingRes, sentRes, myRes, declinedRes] = await Promise.all([
-            axios.get(`${API}/api/connections/pending`,  { headers: headers() }),
-            axios.get(`${API}/api/connections/sent`,     { headers: headers() }),
-            axios.get(`${API}/api/connections/my`,       { headers: headers() }),
-            axios.get(`${API}/api/connections/declined`, { headers: headers() }),  // ← new
-        ]);
+    const fetchAll = useCallback(async () => {
+        setLoading(true);
+        try {
+            const [pendingRes, sentRes, myRes, declinedRes] = await Promise.all([
+                axios.get(`${API}/api/connections/pending`,  { headers: headers() }),
+                axios.get(`${API}/api/connections/sent`,     { headers: headers() }),
+                axios.get(`${API}/api/connections/my`,       { headers: headers() }),
+                axios.get(`${API}/api/connections/declined`, { headers: headers() }),
+            ]);
 
-        const sentList     = sentRes.data.requests     || [];
-        const declinedList = declinedRes.data.requests || [];
+            const sentList     = sentRes.data.requests     || [];
+            const declinedList = declinedRes.data.requests || [];
 
-        setData({
-            received: pendingRes.data.requests || [],
-            sent:     sentList.filter(r => r.status === "pending"),
-            accepted: [
-                ...(myRes.data.connections || []),
-                ...sentList.filter(r => r.status === "accepted"),
-            ],
-            rejected: [
-                // Requests YOU sent that were rejected by receiver
-                ...sentList.filter(r => r.status === "rejected").map(r => ({
-                    ...r,
-                    _displayUser: r.receiver,   // ← the person who rejected you
-                    _type: "sent"
-                })),
-                // Requests YOU received and declined
-                ...declinedList.map(r => ({
-                    ...r,
-                    _displayUser: r.sender,     // ← the person you declined
-                    _type: "received"
-                })),
-            ],
-        });
-    } catch (err) {
-        console.error(err);
-    }
-    setLoading(false);
-}, []);
+            setData({
+                received: pendingRes.data.requests || [],
+                sent:     sentList.filter(r => r.status === "pending"),
+                accepted: [
+                    ...(myRes.data.connections || []),
+                    ...sentList.filter(r => r.status === "accepted"),
+                ],
+                rejected: [
+                    ...sentList.filter(r => r.status === "rejected").map(r => ({
+                        ...r,
+                        _displayUser: r.receiver,
+                        _type: "sent"
+                    })),
+                    ...declinedList.map(r => ({
+                        ...r,
+                        _displayUser: r.sender,
+                        _type: "received"
+                    })),
+                ],
+            });
+        } catch (err) {
+            console.error(err);
+        }
+        setLoading(false);
+    }, []);
 
     useEffect(() => { fetchAll(); }, [fetchAll]);
 
-    // ── Actions ─────────────────────────────────────
     const accept = async (connectionId) => {
         await axios.patch(`${API}/api/connections/accept/${connectionId}`, {}, { headers: headers() });
         fetchAll();
@@ -80,29 +74,47 @@ const fetchAll = useCallback(async () => {
         fetchAll();
     };
 
-    // ── Card Components ──────────────────────────────
     const ProfileCard = ({ user, meta, actions }) => (
         <div style={{
-            background: "#150707", border: "1px solid #3D1515", borderRadius: 14,
-            padding: "14px 16px", display: "flex", alignItems: "center",
-            gap: 14, marginBottom: 12
+            background: "#150707", border: "1px solid #3D1515", borderRadius: 16,
+            padding: "16px", display: "flex", flexDirection: "column",
+            gap: 12, marginBottom: 16, boxShadow: "0 4px 20px rgba(0,0,0,0.2)"
         }}>
-            <div style={{ padding: 2, borderRadius: "50%", background: "linear-gradient(135deg,#C9A84C,#7B1C1C)", flexShrink: 0 }}>
-                <img
-                    src={user.photos?.[0] || "https://images.unsplash.com/photo-1494790108377-be9c29b29330"}
-                    alt={user.name}
-                    style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover", border: "2px solid #150707", display: "block" }}
-                />
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <div style={{ padding: 2, borderRadius: "50%", background: "linear-gradient(135deg,#C9A84C,#7B1C1C)", flexShrink: 0 }}>
+                    <img
+                        src={user.photos?.[0] || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user._id}`}
+                        alt={user.name}
+                        style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "cover", border: "2px solid #150707", display: "block" }}
+                    />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <h4 style={{ color: "#FFF5E6", fontWeight: 700, fontSize: 15, margin: "0 0 4px" }}>{user.name}</h4>
+                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 8px" }}>
+                        {user.city && (
+                            <span style={{ color: "#C9A84C", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
+                                <span style={{ fontSize: 10 }}>📍</span> {user.city}
+                            </span>
+                        )}
+                        {user.occupation && (
+                            <span style={{ color: "#8B6B52", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
+                                <span style={{ opacity: 0.5 }}>·</span> {user.occupation}
+                            </span>
+                        )}
+                    </div>
+                </div>
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ color: "#FFF5E6", fontWeight: 600, fontSize: 14, margin: "0 0 2px" }}>{user.name}</p>
-                <p style={{ color: "#8B6914", fontSize: 12, margin: "0 0 4px" }}>
-                    {user.city ? `📍 ${user.city}` : ""}{user.occupation ? ` · ${user.occupation}` : ""}
-                </p>
-                {meta && <p style={{ color: "#4A2A1A", fontSize: 11, margin: 0 }}>{meta}</p>}
-            </div>
-            <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                {actions}
+
+            <div style={{ 
+                display: "flex", alignItems: "center", justifyContent: "space-between", 
+                paddingTop: 10, borderTop: "1px solid #2A0F0F", marginTop: 4 
+            }}>
+                <div style={{ color: "#4A2A1A", fontSize: 11, fontStyle: "italic" }}>
+                    {meta}
+                </div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    {actions}
+                </div>
             </div>
         </div>
     );
@@ -138,7 +150,6 @@ const fetchAll = useCallback(async () => {
         }}>{children}</button>
     );
 
-    // ── Tab Content ──────────────────────────────────
     const renderTab = () => {
         if (loading) return (
             <div style={{ textAlign: "center", paddingTop: 60 }}>
@@ -192,64 +203,61 @@ const fetchAll = useCallback(async () => {
             });
         }
 
-       // Replace the rejected renderTab block
-if (activeTab === "rejected") {
-    if (!data.rejected.length) return <Empty msg="No rejected requests" />;
-    return data.rejected.map(req => (
-        <ProfileCard
-            key={req._id}
-            user={req._displayUser}   // ← works for both cases now
-            meta={
-                req._type === "sent"
-                    ? `You sent · declined ${timeAgo(req.updatedAt)}`
-                    : `You declined · ${timeAgo(req.updatedAt)}`
-            }
-            actions={
-                <Badge type="rejected" />
-            }
-        />
-    ));
-}
+        if (activeTab === "rejected") {
+            if (!data.rejected.length) return <Empty msg="No rejected requests" />;
+            return data.rejected.map(req => (
+                <ProfileCard
+                    key={req._id}
+                    user={req._displayUser}
+                    meta={
+                        req._type === "sent"
+                            ? `You sent · declined ${timeAgo(req.updatedAt)}`
+                            : `You declined · ${timeAgo(req.updatedAt)}`
+                    }
+                    actions={
+                        <Badge type="rejected" />
+                    }
+                />
+            ));
+        }
     };
 
     return (
-        <div style={{ background: "#0D0404", minHeight: "100vh", color: "#FFF5E6" }}>
-            <Navbar />
-            <div className="lg:ml-[240px] flex justify-center">
-                <div className="w-full max-w-xl pt-20 lg:pt-8 px-4 pb-20">
+        <div className="flex justify-center">
+            <div className="w-full max-w-xl">
+                <div style={{ borderBottom: "1px solid #3D1515", paddingBottom: 16, marginBottom: 20 }}>
+                    <h2 style={{ color: "#C9A84C", fontSize: 13, letterSpacing: "0.2em", margin: "0 0 2px" }}>❋ CONNECTIONS</h2>
+                    <h1 style={{ color: "#FFF5E6", fontSize: 22, fontWeight: 600, margin: 0 }}>Manage Interests</h1>
+                </div>
 
-                    {/* Header */}
-                    <div style={{ borderBottom: "1px solid #3D1515", paddingBottom: 16, marginBottom: 20 }}>
-                        <h2 style={{ color: "#C9A84C", fontSize: 13, letterSpacing: "0.2em", margin: "0 0 2px" }}>❋ CONNECTIONS</h2>
-                        <h1 style={{ color: "#FFF5E6", fontSize: 22, fontWeight: 600, margin: 0 }}>Manage Interests</h1>
-                    </div>
+                <div className="grid grid-cols-2 lg:flex lg:flex-row gap-3 mb-8">
+                    {TABS.map(tab => (
+                        <button
+                            key={tab.key}
+                            onClick={() => setActiveTab(tab.key)}
+                            style={{
+                                display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                                padding: "12px 16px", borderRadius: 12, fontSize: 13, cursor: "pointer",
+                                background: activeTab === tab.key ? "rgba(201,168,76,0.1)" : "rgba(201,168,76,0.02)",
+                                color: activeTab === tab.key ? "#C9A84C" : "#8B6B52",
+                                border: activeTab === tab.key ? "1px solid #C9A84C" : "1px solid #3D1515",
+                                fontWeight: activeTab === tab.key ? 700 : 500,
+                                transition: "all 0.2s",
+                                width: "100%",
+                            }}
+                        >
+                            <span style={{ opacity: activeTab === tab.key ? 1 : 0.7 }}>{tab.icon}</span>
+                            <span>{tab.label}</span>
+                            {tab.key === "received" && data.received.length > 0 && (
+                                <span style={{ background: "#7B1C1C", color: "#FFF5E6", fontSize: 10, borderRadius: 20, padding: "1px 6px", marginLeft: 4 }}>
+                                    {data.received.length}
+                                </span>
+                            )}
+                        </button>
+                    ))}
+                </div>
 
-                    {/* Tabs */}
-                    <div style={{ display: "flex", gap: 6, marginBottom: 20, flexWrap: "wrap" }}>
-                        {TABS.map(tab => (
-                            <button
-                                key={tab.key}
-                                onClick={() => setActiveTab(tab.key)}
-                                style={{
-                                    display: "flex", alignItems: "center", gap: 6,
-                                    padding: "8px 16px", borderRadius: 10, fontSize: 13, cursor: "pointer",
-                                    background: activeTab === tab.key ? "rgba(201,168,76,0.1)" : "transparent",
-                                    color: activeTab === tab.key ? "#C9A84C" : "#6B5030",
-                                    border: activeTab === tab.key ? "1px solid #C9A84C44" : "1px solid #3D1515",
-                                    fontWeight: activeTab === tab.key ? 600 : 400,
-                                }}
-                            >
-                                {tab.icon} {tab.label}
-                                {tab.key === "received" && data.received.length > 0 && (
-                                    <span style={{ background: "#7B1C1C", color: "#FFF5E6", fontSize: 10, borderRadius: 20, padding: "1px 6px" }}>
-                                        {data.received.length}
-                                    </span>
-                                )}
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* Content */}
+                <div className="no-scrollbar" style={{ paddingBottom: 40 }}>
                     {renderTab()}
                 </div>
             </div>
@@ -259,9 +267,9 @@ if (activeTab === "rejected") {
 
 function Empty({ msg }) {
     return (
-        <div style={{ textAlign: "center", padding: "60px 20px", color: "#4A2A1A" }}>
-            <div style={{ fontSize: 32, marginBottom: 10 }}>❋</div>
-            <p style={{ fontSize: 14 }}>{msg}</p>
+        <div style={{ textAlign: "center", padding: "100px 20px", color: "#6B5030" }}>
+            <div style={{ fontSize: 40, marginBottom: 16, opacity: 0.3 }}>❋</div>
+            <p style={{ fontSize: 15, letterSpacing: "0.02em", fontWeight: 400 }}>{msg}</p>
         </div>
     );
 }

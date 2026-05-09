@@ -1,11 +1,12 @@
 // pages/Profile.jsx
 import { useState, useEffect } from "react";
 import axios from "axios";
-import Navbar from "../component/Navbar";
-import { FaCamera, FaTimes, FaStar } from "react-icons/fa";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { logout, updateUser } from "../redux/authSlice";
+import { FaCamera, FaTimes, FaStar, FaSignOutAlt } from "react-icons/fa";
 
 const API = import.meta.env.VITE_API_URL;
-const headers = () => ({ Authorization: `Bearer ${localStorage.getItem("token")}` });
 
 const FIELDS = [
     { key: "name",          label: "Full Name",      type: "text"   },
@@ -36,9 +37,14 @@ export default function Profile() {
     const [uploading, setUploading] = useState(false);
     const [msg, setMsg]           = useState(null);
 
-    // ── Fetch profile ──────────────────────────────
+    const dispatch = useDispatch();
+    const navigate = useNavigate();
+    const { token } = useSelector(state => state.auth);
+    const headers = { Authorization: `Bearer ${token}` };
+
     useEffect(() => {
-        axios.get(`${API}/auth/me`, { headers: headers() })
+        if (!token) return;
+        axios.get(`${API}/auth/me`, { headers })
             .then(res => {
                 const u = res.data.user || {};
                 setPhotos(u.photos || []);
@@ -58,17 +64,16 @@ export default function Profile() {
             })
             .catch(() => setMsg({ type: "error", text: "Failed to load profile" }))
             .finally(() => setLoading(false));
-    }, []);
+    }, [token]);
 
     const handleChange = (key, value) => setForm(prev => ({ ...prev, [key]: value }));
 
-    // ── Save profile details ───────────────────────
     const handleSave = async () => {
         setSaving(true);
         setMsg(null);
         try {
-            const res = await axios.put(`${API}/auth/me`, form, { headers: headers() });
-            localStorage.setItem("userName", res.data.user.name);
+            const res = await axios.put(`${API}/auth/me`, form, { headers });
+            dispatch(updateUser(res.data.user));
             setMsg({ type: "success", text: "Profile updated successfully ✓" });
         } catch (err) {
             setMsg({ type: "error", text: err.response?.data?.message || "Update failed" });
@@ -77,33 +82,35 @@ export default function Profile() {
         }
     };
 
-    // ── Upload photo ───────────────────────────────
+    const handleLogout = () => {
+        dispatch(logout());
+        navigate("/");
+    };
+
     const handleUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-
         const formData = new FormData();
         formData.append("photo", file);
         setUploading(true);
         setMsg(null);
         try {
             const res = await axios.post(`${API}/auth/photos`, formData, {
-                headers: { ...headers(), "Content-Type": "multipart/form-data" },
+                headers: { ...headers, "Content-Type": "multipart/form-data" },
             });
             setPhotos(res.data.photos);
         } catch (err) {
             setMsg({ type: "error", text: "Photo upload failed" });
         } finally {
             setUploading(false);
-            e.target.value = "";   // reset input so same file can be re-uploaded
+            e.target.value = "";
         }
     };
 
-    // ── Delete photo ───────────────────────────────
     const handleDelete = async (photoUrl) => {
         try {
             const res = await axios.delete(`${API}/auth/photos`, {
-                headers: headers(),
+                headers,
                 data: { photoUrl },
             });
             setPhotos(res.data.photos);
@@ -112,13 +119,12 @@ export default function Profile() {
         }
     };
 
-    // ── Set as profile pic (move to index 0) ──────
     const setAsProfile = async (photoUrl) => {
         const reordered = [photoUrl, ...photos.filter(p => p !== photoUrl)];
         try {
             const res = await axios.put(`${API}/auth/photos/reorder`,
                 { photos: reordered },
-                { headers: headers() }
+                { headers }
             );
             setPhotos(res.data.photos);
         } catch {
@@ -127,240 +133,112 @@ export default function Profile() {
     };
 
     return (
-        <div style={{ background: "#0D0404", minHeight: "100vh", color: "#FFF5E6" }}>
-            <Navbar />
+        <div className="flex justify-center no-scrollbar" style={{ height: "100%", overflowY: "auto" }}>
+            <div className="w-full max-w-xl pb-10">
+                {/* Header */}
+                <div style={{ borderBottom: "1px solid #3D1515", paddingBottom: 16, marginBottom: 24 }}>
+                    <h2 style={{ color: "#C9A84C", fontSize: 13, letterSpacing: "0.2em", margin: "0 0 2px" }}>❋ ACCOUNT</h2>
+                    <h1 style={{ color: "#FFF5E6", fontSize: 22, fontWeight: 600, margin: 0 }}>Your Profile</h1>
+                </div>
 
-            <div className="lg:ml-[240px] flex justify-center">
-                <div className="w-full max-w-xl pt-20 lg:pt-8 px-4 pb-24">
-
-                    {/* Header */}
-                    <div style={{ borderBottom: "1px solid #3D1515", paddingBottom: 16, marginBottom: 24 }}>
-                        <h2 style={{ color: "#C9A84C", fontSize: 13, letterSpacing: "0.2em", margin: "0 0 2px" }}>❋ ACCOUNT</h2>
-                        <h1 style={{ color: "#FFF5E6", fontSize: 22, fontWeight: 600, margin: 0 }}>Your Profile</h1>
+                {loading ? (
+                    <div style={{ textAlign: "center", paddingTop: 60 }}>
+                        <div style={{ color: "#C9A84C", fontSize: 28, marginBottom: 12 }}>❋</div>
+                        <p style={{ color: "#6B5030" }}>Loading profile...</p>
                     </div>
-
-                    {loading ? (
-                        <div style={{ textAlign: "center", paddingTop: 60 }}>
-                            <div style={{ color: "#C9A84C", fontSize: 28, marginBottom: 12 }}>❋</div>
-                            <p style={{ color: "#6B5030" }}>Loading profile...</p>
-                        </div>
-                    ) : (
-                        <>
-                            {/* ── Profile Avatar (first photo) ── */}
-                            <div style={{ display: "flex", justifyContent: "center", marginBottom: 28 }}>
-                                <div style={{ position: "relative" }}>
-                                    <div style={{ padding: 3, borderRadius: "50%", background: "linear-gradient(135deg, #C9A84C, #7B1C1C)" }}>
-                                        {photos[0] ? (
-                                            <img
-                                                src={photos[0]}
-                                                alt="Profile"
-                                                style={{ width: 90, height: 90, borderRadius: "50%", objectFit: "cover", border: "3px solid #1A0A0A", display: "block" }}
-                                            />
-                                        ) : (
-                                            <div style={{
-                                                width: 90, height: 90, borderRadius: "50%",
-                                                background: "#1A0A0A", display: "flex",
-                                                alignItems: "center", justifyContent: "center",
-                                                fontSize: 32, color: "#C9A84C", border: "3px solid #1A0A0A"
-                                            }}>
-                                                {form.name?.[0]?.toUpperCase() || "?"}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Quick upload trigger on avatar */}
-                                    <label style={{
-                                        position: "absolute", bottom: 2, right: 2,
-                                        width: 28, height: 28, borderRadius: "50%",
-                                        background: "#C9A84C", display: "flex",
-                                        alignItems: "center", justifyContent: "center",
-                                        cursor: "pointer", border: "2px solid #0D0404"
-                                    }}>
-                                        <FaCamera size={12} color="#1A0A0A" />
-                                        <input type="file" accept="image/*" onChange={handleUpload} style={{ display: "none" }} />
-                                    </label>
-                                </div>
-                            </div>
-
-                            {/* ── Photo Grid ── */}
-                            <div style={{ marginBottom: 28 }}>
-                                <label style={{ color: "#8B6914", fontSize: 12, display: "block", marginBottom: 10, letterSpacing: "0.05em" }}>
-                                    PHOTOS
-                                    <span style={{ color: "#4A2A1A", fontWeight: 400, marginLeft: 6 }}>
-                                        · tap ★ to set as profile picture
-                                    </span>
-                                </label>
-
-                                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-
-                                    {/* Existing photos */}
-                                    {photos.map((url, index) => (
-                                        <div
-                                            key={url}
-                                            className="group"
-                                            style={{ position: "relative", aspectRatio: "1", borderRadius: 12, overflow: "hidden" }}
-                                        >
-                                            <img
-                                                src={url}
-                                                alt=""
-                                                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                                            />
-
-                                            {/* Profile badge */}
-                                            {index === 0 && (
-                                                <div style={{
-                                                    position: "absolute", top: 6, left: 6,
-                                                    background: "rgba(201,168,76,0.92)", borderRadius: 20,
-                                                    padding: "2px 8px", fontSize: 10,
-                                                    color: "#1A0A0A", fontWeight: 700,
-                                                    display: "flex", alignItems: "center", gap: 4
-                                                }}>
-                                                    <FaStar size={8} /> Profile
-                                                </div>
-                                            )}
-
-                                            {/* Overlay actions */}
-                                            <div style={{
-                                                position: "absolute", inset: 0,
-                                                background: "rgba(0,0,0,0.55)",
-                                                display: "flex", flexDirection: "column",
-                                                alignItems: "center", justifyContent: "center",
-                                                gap: 6, opacity: 0, transition: "opacity 0.2s",
-                                            }}
-                                                onMouseEnter={e => e.currentTarget.style.opacity = 1}
-                                                onMouseLeave={e => e.currentTarget.style.opacity = 0}
-                                            >
-                                                {index !== 0 && (
-                                                    <button
-                                                        onClick={() => setAsProfile(url)}
-                                                        style={{
-                                                            background: "rgba(201,168,76,0.92)",
-                                                            border: "none", borderRadius: 8,
-                                                            padding: "5px 10px", fontSize: 11,
-                                                            color: "#1A0A0A", fontWeight: 700, cursor: "pointer",
-                                                            display: "flex", alignItems: "center", gap: 4
-                                                        }}
-                                                    >
-                                                        <FaStar size={9} /> Set Profile
-                                                    </button>
-                                                )}
-                                                <button
-                                                    onClick={() => handleDelete(url)}
-                                                    style={{
-                                                        background: "rgba(123,28,28,0.92)",
-                                                        border: "none", borderRadius: 8,
-                                                        padding: "5px 10px", fontSize: 11,
-                                                        color: "#FFF5E6", cursor: "pointer",
-                                                        display: "flex", alignItems: "center", gap: 4
-                                                    }}
-                                                >
-                                                    <FaTimes size={9} /> Remove
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
-
-                                    {/* Upload slot (max 6 photos) */}
-                                    {photos.length < 6 && (
-                                        <label style={{
-                                            aspectRatio: "1", borderRadius: 12,
-                                            border: `2px dashed ${uploading ? "#C9A84C" : "#3D1515"}`,
-                                            display: "flex", flexDirection: "column",
+                ) : (
+                    <>
+                        {/* ── Profile Avatar ── */}
+                        <div style={{ display: "flex", justifyContent: "center", marginBottom: 28 }}>
+                            <div style={{ position: "relative" }}>
+                                <div style={{ padding: 3, borderRadius: "50%", background: "linear-gradient(135deg, #C9A84C, #7B1C1C)" }}>
+                                    {photos[0] ? (
+                                        <img
+                                            src={photos[0]}
+                                            alt="Profile"
+                                            style={{ width: 90, height: 90, borderRadius: "50%", objectFit: "cover", border: "3px solid #1A0A0A", display: "block" }}
+                                        />
+                                    ) : (
+                                        <div style={{
+                                            width: 90, height: 90, borderRadius: "50%",
+                                            background: "#1A0A0A", display: "flex",
                                             alignItems: "center", justifyContent: "center",
-                                            cursor: uploading ? "not-allowed" : "pointer",
-                                            gap: 8, color: uploading ? "#C9A84C" : "#4A2A1A",
-                                            transition: "all 0.2s",
-                                        }}
-                                            onMouseEnter={e => { if (!uploading) { e.currentTarget.style.borderColor = "#C9A84C"; e.currentTarget.style.color = "#C9A84C"; } }}
-                                            onMouseLeave={e => { if (!uploading) { e.currentTarget.style.borderColor = "#3D1515"; e.currentTarget.style.color = "#4A2A1A"; } }}
-                                        >
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                onChange={handleUpload}
-                                                style={{ display: "none" }}
-                                                disabled={uploading}
-                                            />
-                                            {uploading ? (
-                                                <>
-                                                    <div style={{ fontSize: 20 }}>⏳</div>
-                                                    <span style={{ fontSize: 11 }}>Uploading...</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <FaCamera size={22} />
-                                                    <span style={{ fontSize: 11 }}>Add Photo</span>
-                                                    <span style={{ fontSize: 10, color: "#3D1515" }}>{photos.length}/6</span>
-                                                </>
-                                            )}
-                                        </label>
+                                            fontSize: 32, color: "#C9A84C", border: "3px solid #1A0A0A"
+                                        }}>
+                                            {form.name?.[0]?.toUpperCase() || "?"}
+                                        </div>
                                     )}
                                 </div>
+                                <label style={{
+                                    position: "absolute", bottom: 2, right: 2,
+                                    width: 28, height: 28, borderRadius: "50%",
+                                    background: "#C9A84C", display: "flex",
+                                    alignItems: "center", justifyContent: "center",
+                                    cursor: "pointer", border: "2px solid #0D0404"
+                                }}>
+                                    <FaCamera size={12} color="#1A0A0A" />
+                                    <input type="file" accept="image/*" onChange={handleUpload} style={{ display: "none" }} />
+                                </label>
                             </div>
+                        </div>
 
-                            {/* ── Profile Form ── */}
-                            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                                {FIELDS.map(({ key, label, type, options }) => (
-                                    <div key={key}>
-                                        <label style={{ color: "#8B6914", fontSize: 12, display: "block", marginBottom: 6, letterSpacing: "0.05em" }}>
-                                            {label.toUpperCase()}
-                                        </label>
-
-                                        {type === "select" ? (
-                                            <select
-                                                value={form[key] || ""}
-                                                onChange={e => handleChange(key, e.target.value)}
-                                                style={{ ...inputStyle, appearance: "none" }}
-                                            >
-                                                <option value="" disabled>Select {label}</option>
-                                                {options.map(o => (
-                                                    <option key={o} value={o} style={{ background: "#1A0A0A" }}>{o}</option>
-                                                ))}
-                                            </select>
-                                        ) : (
-                                            <input
-                                                type={type}
-                                                value={form[key] || ""}
-                                                onChange={e => handleChange(key, e.target.value)}
-                                                placeholder={label}
-                                                style={inputStyle}
-                                            />
+                        {/* ── Photo Grid ── */}
+                        <div style={{ marginBottom: 28 }}>
+                            <label style={{ color: "#8B6914", fontSize: 12, display: "block", marginBottom: 10, letterSpacing: "0.05em" }}>
+                                PHOTOS
+                            </label>
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+                                {photos.map((url, index) => (
+                                    <div key={url} style={{ position: "relative", aspectRatio: "1", borderRadius: 12, overflow: "hidden" }}>
+                                        <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                                        {index === 0 && (
+                                            <div style={{ position: "absolute", top: 6, left: 6, background: "#C9A84C", borderRadius: 20, padding: "2px 8px", fontSize: 10, color: "#1A0A0A", fontWeight: 700 }}>
+                                                Profile
+                                            </div>
                                         )}
+                                        <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: 0 }} onMouseEnter={e => e.currentTarget.style.opacity = 1} onMouseLeave={e => e.currentTarget.style.opacity = 0}>
+                                            <button onClick={() => setAsProfile(url)} style={{ background: "#C9A84C", border: "none", borderRadius: 8, padding: "5px 10px", fontSize: 11, cursor: "pointer" }}>★</button>
+                                            <button onClick={() => handleDelete(url)} style={{ background: "#7B1C1C", border: "none", borderRadius: 8, padding: "5px 10px", fontSize: 11, color: "white", cursor: "pointer" }}>✕</button>
+                                        </div>
                                     </div>
                                 ))}
+                                {photos.length < 6 && (
+                                    <label style={{ aspectRatio: "1", borderRadius: 12, border: "2px dashed #3D1515", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                                        <input type="file" accept="image/*" onChange={handleUpload} style={{ display: "none" }} />
+                                        <FaCamera size={20} color="#3D1515" />
+                                    </label>
+                                )}
                             </div>
+                        </div>
 
-                            {/* Feedback */}
-                            {msg && (
-                                <div style={{
-                                    marginTop: 20, padding: "10px 14px", borderRadius: 10,
-                                    background: msg.type === "success" ? "rgba(60,120,60,0.15)" : "rgba(123,28,28,0.2)",
-                                    color: msg.type === "success" ? "#7BC47B" : "#C46B6B",
-                                    border: `1px solid ${msg.type === "success" ? "#3D6B3D" : "#7B1C1C"}`,
-                                    fontSize: 13,
-                                }}>
-                                    {msg.text}
+                        {/* ── Form ── */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                            {FIELDS.map(({ key, label, type, options }) => (
+                                <div key={key}>
+                                    <label style={{ color: "#8B6914", fontSize: 12, display: "block", marginBottom: 6 }}>{label}</label>
+                                    {type === "select" ? (
+                                        <select value={form[key] || ""} onChange={e => handleChange(key, e.target.value)} style={inputStyle}>
+                                            <option value="" disabled>Select {label}</option>
+                                            {options.map(o => <option key={o} value={o}>{o}</option>)}
+                                        </select>
+                                    ) : (
+                                        <input type={type} value={form[key] || ""} onChange={e => handleChange(key, e.target.value)} style={inputStyle} />
+                                    )}
                                 </div>
-                            )}
+                            ))}
+                        </div>
 
-                            {/* Save */}
-                            <button
-                                onClick={handleSave}
-                                disabled={saving}
-                                style={{
-                                    marginTop: 24, width: "100%", padding: "13px 0",
-                                    background: saving ? "rgba(201,168,76,0.1)" : "linear-gradient(90deg, #7B1C1C, #A0341E)",
-                                    color: saving ? "#C9A84C" : "#FFF5E6",
-                                    border: saving ? "1px solid #C9A84C44" : "none",
-                                    borderRadius: 12, fontSize: 15, fontWeight: 600,
-                                    cursor: saving ? "not-allowed" : "pointer"
-                                }}
-                            >
-                                {saving ? "Saving..." : "Save Changes"}
-                            </button>
-                        </>
-                    )}
-                </div>
+                        {msg && (
+                            <div style={{ marginTop: 20, padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.05)", color: msg.type === "success" ? "#7BC47B" : "#C46B6B", border: "1px solid #3D1515", fontSize: 13 }}>
+                                {msg.text}
+                            </div>
+                        )}
+
+                        <button onClick={handleSave} disabled={saving} style={{ marginTop: 24, width: "100%", padding: 14, background: "linear-gradient(90deg, #7B1C1C, #A0341E)", color: "white", borderRadius: 12, fontWeight: 600, cursor: "pointer" }}>
+                            {saving ? "Saving..." : "Save Changes"}
+                        </button>
+                    </>
+                )}
             </div>
         </div>
     );
