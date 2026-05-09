@@ -152,25 +152,31 @@ export default function UserProfileDrawer({ userId, onClose, requestedIds, onInt
                   {profile.education && <p style={{ color: "#9A7A5A", fontSize: 13, margin: 0 }}>🎓 {profile.education}</p>}
                 </div>
 
-                {/* Action Buttons (Below details, above tabs) */}
-                <div style={{ padding: "10px 0 20px" }}>
-                  <div className="flex flex-col md:flex-row gap-3 md:max-w-lg md:mx-auto" style={{ width: "100%" }}>
+                {/* Action Buttons (Side-by-side, compact) */}
+                <div style={{ padding: "8px 0 16px" }}>
+                  <div className="flex flex-row gap-2.5" style={{ width: "100%" }}>
                     <button
                       onClick={() => onInterested(userId)}
                       style={{
-                        flex: 1.4, padding: "12px 0",
+                        flex: 1.2, padding: "10px 0",
                         background: isRequested ? "#1A0505" : "linear-gradient(90deg, #7B1C1C, #A0341E)",
                         color: isRequested ? "#C9A84C" : "#FFF5E6",
                         border: isRequested ? "1px solid #C9A84C33" : "none",
-                        borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: "pointer",
-                        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                        boxShadow: isRequested ? "none" : "0 4px 15px rgba(123, 28, 28, 0.3)",
+                        borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                        boxShadow: isRequested ? "none" : "0 4px 12px rgba(123, 28, 28, 0.25)",
+                        textTransform: "uppercase", letterSpacing: "0.01em"
                       }}
                     >
-                      <FaHeart size={14} />
+                      <FaHeart size={12} />
                       {isRequested ? "Requested" : "Interested"}
                     </button>
-                    <button style={{ flex: 1, padding: "12px 0", background: "#150A0A", color: "#C4A882", border: "1px solid #3D1515", borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                    <button style={{ 
+                      flex: 1, padding: "10px 0", background: "#110505", 
+                      color: "#C4A882", border: "1px solid #3D1515", 
+                      borderRadius: 10, fontSize: 12, fontWeight: 600, 
+                      cursor: "pointer", textTransform: "uppercase" 
+                    }}>
                       ✉ Message
                     </button>
                   </div>

@@ -208,15 +208,24 @@ export default function Messages() {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {displayList.map((user) => (
-            <div key={user._id} onClick={() => openChat(user)} className="flex items-center gap-3 px-4 py-3 cursor-pointer" style={{ background: selectedUser?._id === user._id ? 'rgba(201,168,76,0.07)' : 'transparent' }}>
-              <img src={user.photos?.[0] || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user._id}`} className="w-12 h-12 rounded-full object-cover border-2 border-[#3D1515]" alt="" />
-              <div className="flex-1 min-w-0">
-                <h2 className="font-semibold text-sm truncate text-[#FFF5E6]">{user.name}</h2>
-                <p className="text-xs truncate text-[#6B5030]">{isOnline(user._id) ? 'Online' : user.city || 'Offline'}</p>
+          {displayList.length > 0 ? (
+            displayList.map((user) => (
+              <div key={user._id} onClick={() => openChat(user)} className="flex items-center gap-3 px-4 py-3 cursor-pointer" style={{ background: selectedUser?._id === user._id ? 'rgba(201,168,76,0.07)' : 'transparent' }}>
+                <img src={user.photos?.[0] || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user._id}`} className="w-12 h-12 rounded-full object-cover border-2 border-[#3D1515]" alt="" />
+                <div className="flex-1 min-w-0">
+                  <h2 className="font-semibold text-sm truncate text-[#FFF5E6]">{user.name}</h2>
+                  <p className="text-xs truncate text-[#6B5030]">{isOnline(user._id) ? 'Online' : user.city || 'Offline'}</p>
+                </div>
               </div>
+            ))
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full px-10 text-center opacity-40">
+              <div className="text-3xl mb-3">❋</div>
+              <p className="text-sm font-medium text-[#6B5030]">
+                {search.trim() ? "No results found" : "No conversations yet"}
+              </p>
             </div>
-          ))}
+          )}
         </div>
       </div>
 
