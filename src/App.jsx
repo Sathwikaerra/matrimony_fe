@@ -11,6 +11,7 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Messages from "./pages/Messages";
 import Connections from "./pages/Connections";
+import Profile from "./pages/Profile";
 
 // inside your <Routes>
 
@@ -20,6 +21,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/home" element={<Home />} />
+        <Route path="/profile" element={<Profile />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path='/messages' element={<Messages />} />
