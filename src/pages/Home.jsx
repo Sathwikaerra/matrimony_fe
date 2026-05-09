@@ -486,7 +486,7 @@ export default function Home() {
               <h2 style={{ color: "#FFF5E6", fontWeight: 600, fontSize: 14, margin: 0 }}>{post.name}</h2>
             </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
+          {/* <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
             {post.scoreMatch && (
               <div style={{
                 background: "linear-gradient(135deg, #7B1C1C, #A0341E)",
@@ -498,9 +498,9 @@ export default function Home() {
               </div>
             )}
 
-          </div>
+          </div> */}
         </div>
-
+              
         {/* ── Photo ── */}
         <div style={{ position: "relative" }}>
           <img
