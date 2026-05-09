@@ -40,13 +40,25 @@ export default function Connections() {
 
             console.log("Rejected Data Debug:", { sentList, declinedList });
 
+            const acceptedBase = myRes.data.connections || [];
+            const acceptedSent = sentList.filter(r => r.status === "accepted");
+            
+            // Deduplicate by connectionId or other user's ID
+            const seenIds = new Set();
+            const uniqueAccepted = [];
+
+            [...acceptedBase, ...acceptedSent].forEach(item => {
+                const id = item.connectionId || item._id;
+                if (!seenIds.has(id)) {
+                    seenIds.add(id);
+                    uniqueAccepted.push(item);
+                }
+            });
+
             setData({
                 received: pendingRes.data.requests || [],
                 sent:     sentList.filter(r => r.status === "pending"),
-                accepted: [
-                    ...(myRes.data.connections || []),
-                    ...sentList.filter(r => r.status === "accepted"),
-                ],
+                accepted: uniqueAccepted,
                 rejected: [
                     ...sentList.filter(r => r.status === "rejected" || r.status === "declined").map(r => ({
                         ...r,
