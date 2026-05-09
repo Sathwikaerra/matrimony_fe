@@ -342,7 +342,7 @@ export default function Home() {
           { headers: { Authorization: `Bearer ${token}` } }
         );
         // Robustly find the new request object/ID
-        const newReq = res.data.request || res.data.connectionRequest || res.data.data || res.data;
+        const newReq = res.data.connection || res.data.request || res.data.connectionRequest || res.data.data || res.data;
         const newId = newReq?._id || newReq?.id || (typeof newReq === 'string' && newReq.length === 24 ? newReq : null);
 
         if (newId) {
