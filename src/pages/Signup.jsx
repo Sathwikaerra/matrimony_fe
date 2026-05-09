@@ -1,8 +1,9 @@
-// pages/Signup.jsx
 import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
+import { toast } from "react-hot-toast";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { login } from "../redux/authSlice";
 import io from 'socket.io-client';
 const socket = io(import.meta.env.VITE_API_URL);
@@ -16,6 +17,7 @@ export default function Signup({ onSwitch }) {
     password: "",
     confirmPassword: "",
   });
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -27,9 +29,12 @@ export default function Signup({ onSwitch }) {
 
   const handleSignup = async (e) => {
     e.preventDefault();
-    if (!formData.fullName || !formData.email || !formData.password || !formData.confirmPassword) return;
+    if (!formData.fullName || !formData.email || !formData.password || !formData.confirmPassword) {
+      toast.error("Please fill in all fields", { style: { background: '#1F0A0A', color: '#FFF5E6' } });
+      return;
+    }
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match");
+      toast.error("Passwords do not match", { style: { background: '#1F0A0A', color: '#FFF5E6' } });
       return;
     }
     setLoading(true);
@@ -43,10 +48,12 @@ export default function Signup({ onSwitch }) {
       dispatch(login({ token, userId, user }));
       await initNotifications(userId);
       socket.emit('registerUser', userId);
-
+      toast.success("Account created successfully!", { style: { background: '#1F0A0A', color: '#FFF5E6' } });
       navigate("/home");
     } catch (error) {
-      alert(error.response?.data?.message || "Signup Failed");
+      toast.error(error.response?.data?.message || "Signup Failed", { 
+        style: { background: '#1F0A0A', color: '#FFF5E6' } 
+      });
     } finally {
       setLoading(false);
     }
@@ -98,27 +105,38 @@ export default function Signup({ onSwitch }) {
               <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: "#8B6B52" }}>
                 Password
               </label>
-              <input
-                type="password"
-                name="password"
-                placeholder="••••••••"
-                value={formData.password}
-                onChange={handleChange}
-                className="w-full bg-[#1A0A0A] border border-[#3D1515] rounded-xl px-5 py-3.5 text-white placeholder:text-[#3D1515] focus:outline-none focus:border-[#C9A84C] transition-colors"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  placeholder="••••••••"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="w-full bg-[#1A0A0A] border border-[#3D1515] rounded-xl px-5 py-3.5 text-white placeholder:text-[#3D1515] focus:outline-none focus:border-[#C9A84C] transition-colors"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#3D1515] hover:text-[#C9A84C]"
+                >
+                  {showPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
+                </button>
+              </div>
             </div>
             <div>
               <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: "#8B6B52" }}>
                 Confirm
               </label>
-              <input
-                type="password"
-                name="confirmPassword"
-                placeholder="••••••••"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className="w-full bg-[#1A0A0A] border border-[#3D1515] rounded-xl px-5 py-3.5 text-white placeholder:text-[#3D1515] focus:outline-none focus:border-[#C9A84C] transition-colors"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="confirmPassword"
+                  placeholder="••••••••"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className="w-full bg-[#1A0A0A] border border-[#3D1515] rounded-xl px-5 py-3.5 text-white placeholder:text-[#3D1515] focus:outline-none focus:border-[#C9A84C] transition-colors"
+                />
+              </div>
             </div>
           </div>
 

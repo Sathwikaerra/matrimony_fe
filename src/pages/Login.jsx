@@ -1,14 +1,16 @@
-// pages/Login.jsx
 import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
+import { toast } from "react-hot-toast";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { login } from "../redux/authSlice";
 import socket from "../services/socket";
 
 
 export default function Login({ onSwitch }) {
   const [formData, setFormData] = useState({ email: "", password: "" });
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -20,7 +22,10 @@ export default function Login({ onSwitch }) {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (!formData.email || !formData.password) return;
+    if (!formData.email || !formData.password) {
+      toast.error("Please fill in all fields", { style: { background: '#1F0A0A', color: '#FFF5E6' } });
+      return;
+    }
     setLoading(true);
     try {
       const response = await axios.post(
@@ -30,11 +35,12 @@ export default function Login({ onSwitch }) {
       const { token, user } = response.data;
       const userId = user.id;
       dispatch(login({ token, userId, user }));
-      // Handled globally in App.jsx via Redux state change
-
+      toast.success("Welcome back!", { style: { background: '#1F0A0A', color: '#FFF5E6' } });
       navigate("/home");
     } catch (error) {
-      alert(error.response?.data?.message || "Login Failed");
+      toast.error(error.response?.data?.message || "Login Failed", { 
+        style: { background: '#1F0A0A', color: '#FFF5E6' } 
+      });
     } finally {
       setLoading(false);
     }
@@ -71,14 +77,23 @@ export default function Login({ onSwitch }) {
             <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: "#8B6B52" }}>
               Password
             </label>
-            <input
-              type="password"
-              name="password"
-              placeholder="••••••••"
-              value={formData.password}
-              onChange={handleChange}
-              className="w-full bg-[#1A0A0A] border border-[#3D1515] rounded-xl px-5 py-3.5 text-white placeholder:text-[#3D1515] focus:outline-none focus:border-[#C9A84C] transition-colors"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                name="password"
+                placeholder="••••••••"
+                value={formData.password}
+                onChange={handleChange}
+                className="w-full bg-[#1A0A0A] border border-[#3D1515] rounded-xl px-5 py-3.5 text-white placeholder:text-[#3D1515] focus:outline-none focus:border-[#C9A84C] transition-colors"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-[#3D1515] hover:text-[#C9A84C] transition-colors"
+              >
+                {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
+              </button>
+            </div>
           </div>
 
           <button
