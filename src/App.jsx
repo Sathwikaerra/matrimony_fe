@@ -49,33 +49,39 @@ export default function App() {
 
     // Global Listeners
     socket.on("receiveMessage", (data) => {
-      // Don't show toast if already on messages page with that user
+      // 1. In-app Toast
       if (!window.location.pathname.startsWith("/messages")) {
         toast.success(`New message from ${data.senderName || "someone"}`, {
           icon: "💬",
           position: "top-right",
-          duration: 4000,
-          style: {
-            background: "#1F0A0A",
-            color: "#FFF5E6",
-            border: "1px solid #C9A84C33",
-          },
+          style: { background: "#1F0A0A", color: "#FFF5E6", border: "1px solid #C9A84C33" },
+        });
+      }
+
+      // 2. System Notification (Native)
+      if (Notification.permission === "granted") {
+        new Notification(`💬 New message from ${data.senderName || "Someone"}`, {
+          body: data.message,
+          icon: "/favicon.svg"
         });
       }
     });
 
     socket.on("notificationReceived", (data) => {
-      // This handles "likes", "interests", etc.
+      // 1. In-app Toast
       toast.success(data.message || "New notification", {
         icon: data.type === "like" ? "❤️" : "✨",
         position: "top-right",
-        duration: 5000,
-        style: {
-          background: "#1F0A0A",
-          color: "#FFF5E6",
-          border: "1px solid #C9A84C33",
-        },
+        style: { background: "#1F0A0A", color: "#FFF5E6", border: "1px solid #C9A84C33" },
       });
+
+      // 2. System Notification (Native)
+      if (Notification.permission === "granted") {
+        new Notification("✨ Matrimony Update", {
+          body: data.message,
+          icon: "/favicon.svg"
+        });
+      }
     });
 
     return () => {
