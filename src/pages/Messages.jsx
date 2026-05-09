@@ -182,9 +182,17 @@ export default function Messages() {
     // Socket logic handled globally and via listeners below
 
     socket.on('receiveMessage', (data) => {
-      if (selectedUserRef.current?._id === data.senderId) setMessages(p => [...p, data]);
-      else setUnreadCounts(p => ({ ...p, [data.senderId]: (p[data.senderId] || 0) + 1 }));
-      fetchRecentChats();
+      // 1. Immediate local update for "instant" feel
+      if (selectedUserRef.current?._id === data.senderId) {
+        setMessages(p => [...p, data]);
+      } else {
+        setUnreadCounts(p => ({ ...p, [data.senderId]: (p[data.senderId] || 0) + 1 }));
+      }
+      
+      // 2. Delayed background sync to ensure DB is ready
+      setTimeout(() => {
+        fetchRecentChats();
+      }, 300);
     });
     socket.on('messageDeleted', ({ msgId }) => setMessages(p => p.filter(m => m._id !== msgId)));
     socket.on('onlineUsers', setOnlineUsers);
