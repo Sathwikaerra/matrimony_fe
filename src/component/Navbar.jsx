@@ -5,8 +5,10 @@ import axios from "axios";
 import { logout } from "../redux/authSlice";
 import { FaHome, FaRegHeart, FaBars, FaTimes, FaUserPlus, FaBell, FaUser, FaSignOutAlt } from "react-icons/fa";
 import { HiOutlineChatBubbleLeftRight } from "react-icons/hi2";
+import socket from "../services/socket";
 
 export default function Navbar() {
+
   const [isOpen, setIsOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [unreadMsgCount, setUnreadMsgCount] = useState(0);
@@ -41,14 +43,25 @@ export default function Navbar() {
       if (res.status === 200) setPendingCount(res.data.requests?.length || 0);
     }).catch(() => { });
 
-    // Unread messages
     axios.get(`${import.meta.env.VITE_API_URL}/api/messages/unread-count/${userId}`, {
       headers, validateStatus: (s) => s < 500,
     }).then(res => {
       if (res.status === 200) setUnreadMsgCount(res.data.count || 0);
     }).catch(() => { });
 
+    // Listen for real-time messages
+    socket.on("receiveMessage", (data) => {
+       // Only increment if not on messages page
+       if (!location.pathname.startsWith("/messages")) {
+           setUnreadMsgCount(prev => prev + 1);
+       }
+    });
+
+    return () => {
+      socket.off("receiveMessage");
+    };
   }, [location.pathname, token, userId]);
+
 
   const navItems = [
     { to: "/home", icon: <FaHome size={20} />, label: "Home" },

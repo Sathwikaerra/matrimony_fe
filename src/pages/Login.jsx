@@ -4,10 +4,8 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { login } from "../redux/authSlice";
-import io from 'socket.io-client';
-import { initNotifications } from "../services/notificationService";
+import socket from "../services/socket";
 
-const socket = io(`${import.meta.env.VITE_API_URL}`);
 
 export default function Login({ onSwitch }) {
   const [formData, setFormData] = useState({ email: "", password: "" });
@@ -32,8 +30,8 @@ export default function Login({ onSwitch }) {
       const { token, user } = response.data;
       const userId = user.id;
       dispatch(login({ token, userId, user }));
-      socket.emit('registerUser', userId);
-      await initNotifications(userId);
+      // Handled globally in App.jsx via Redux state change
+
       navigate("/home");
     } catch (error) {
       alert(error.response?.data?.message || "Login Failed");

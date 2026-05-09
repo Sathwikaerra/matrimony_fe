@@ -1,16 +1,10 @@
 // pages/Messages.jsx
 import { useEffect, useState, useRef, useCallback } from 'react';
 import axios from 'axios';
-import io from 'socket.io-client';
+import socket from '../services/socket';
 import { IoSend, IoTrash, IoCheckmarkDone, IoArrowBack } from 'react-icons/io5';
 import { FaSearch, FaTimes } from 'react-icons/fa';
 
-const socket = io(`${import.meta.env.VITE_API_URL}`, {
-  autoConnect: true,
-  reconnection: true,
-  reconnectionAttempts: 10,
-  transports: ['websocket', 'polling'],
-});
 
 const formatTime = (dateStr) => {
   if (!dateStr) return '';
@@ -173,8 +167,8 @@ export default function Messages() {
   useEffect(() => {
     if (!senderId) return;
     fetchRecentChats();
-    const registerUser = () => socket.emit('registerUser', senderId);
-    registerUser();
+    // Socket logic handled globally and via listeners below
+
     socket.on('receiveMessage', (data) => {
       if (selectedUserRef.current?._id === data.senderId) setMessages(p => [...p, data]);
       else setUnreadCounts(p => ({ ...p, [data.senderId]: (p[data.senderId] || 0) + 1 }));

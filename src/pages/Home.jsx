@@ -380,7 +380,7 @@ export default function Home() {
         image: user.photos?.[1] || user.photos?.[0],
         bio: "Looking for meaningful connection ❤️",
         interests: "Travel • Music • Family",
-        likes: user.likesCount ?? 100 + index,
+        likes: user.likesCount ?? (Array.isArray(user.likes) ? user.likes.length : 0),
         isLiked: user.isLiked ?? false,
         scoreMatch: user.matchScore,
       }));
@@ -413,11 +413,25 @@ export default function Home() {
     setTimeout(() => setLikeAnimating(prev => ({ ...prev, [id]: false })), 400);
 
     try {
-      await axios.put(
+      const res = await axios.put(
         `${import.meta.env.VITE_API_URL}/auth/like/${id}`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      
+      // sync with server ground truth
+      const updated = res.data.user || res.data.updatedUser || res.data;
+      if (updated) {
+        setPosts(prev => prev.map(post =>
+          post.id === id
+            ? { 
+                ...post, 
+                likes: updated.likesCount ?? (Array.isArray(updated.likes) ? updated.likes.length : post.likes),
+                isLiked: updated.isLiked ?? post.isLiked
+              }
+            : post
+        ));
+      }
     } catch (err) {
       // revert on error
       console.error(err);
