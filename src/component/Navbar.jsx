@@ -36,29 +36,26 @@ export default function Navbar() {
       .then(res => setUserProfile(res.data.user || res.data))
       .catch(() => { });
 
-    // Pending connection requests
-    axios.get(`${import.meta.env.VITE_API_URL}/api/connections/pending`, {
-      headers, validateStatus: (s) => s < 500,
-    }).then(res => {
-      if (res.status === 200) setPendingCount(res.data.requests?.length || 0);
-    }).catch(() => { });
+    const refreshCounts = () => {
+      axios.get(`${import.meta.env.VITE_API_URL}/api/messages/unread-count/${userId}`, { headers })
+        .then(res => { if (res.status === 200) setUnreadMsgCount(res.data.count || 0); })
+        .catch(() => { });
 
-    axios.get(`${import.meta.env.VITE_API_URL}/api/messages/unread-count/${userId}`, {
-      headers, validateStatus: (s) => s < 500,
-    }).then(res => {
-      if (res.status === 200) setUnreadMsgCount(res.data.count || 0);
-    }).catch(() => { });
+      axios.get(`${import.meta.env.VITE_API_URL}/api/connections/pending`, { headers })
+        .then(res => { if (res.status === 200) setPendingCount(res.data.requests?.length || 0); })
+        .catch(() => { });
+    };
 
-    // Listen for real-time messages
-    socket.on("receiveMessage", (data) => {
-       // Only increment if not on messages page
-       if (!location.pathname.startsWith("/messages")) {
-           setUnreadMsgCount(prev => prev + 1);
-       }
-    });
+    refreshCounts();
+
+    socket.on("receiveMessage", refreshCounts);
+    socket.on("notificationReceived", refreshCounts);
+    socket.on("refreshUnreadCount", refreshCounts);
 
     return () => {
-      socket.off("receiveMessage");
+      socket.off("receiveMessage", refreshCounts);
+      socket.off("notificationReceived", refreshCounts);
+      socket.off("refreshUnreadCount", refreshCounts);
     };
   }, [location.pathname, token, userId]);
 

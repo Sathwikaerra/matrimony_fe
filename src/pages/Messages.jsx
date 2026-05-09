@@ -77,7 +77,14 @@ export default function Messages() {
   const fetchRecentChats = async () => {
     try {
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/messages/recent/${senderId}`);
-      setRecentChats(res.data.users || []);
+      const chats = res.data.chats || [];
+      setRecentChats(chats);
+      
+      const counts = {};
+      chats.forEach(c => {
+        if (c.unreadCount > 0) counts[c.user._id] = c.unreadCount;
+      });
+      setUnreadCounts(counts);
     } catch (err) { console.error(err); }
   };
 
@@ -106,6 +113,7 @@ export default function Messages() {
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/messages/${senderId}/${receiverId}`);
       setMessages(res.data.messages || []);
       setUnreadCounts((prev) => ({ ...prev, [receiverId]: 0 }));
+      socket.emit('refreshUnreadCount', { userId: senderId }); 
     } catch (err) { console.error(err); }
   };
 
@@ -208,20 +216,39 @@ export default function Messages() {
         </div>
         <div className="flex-1 overflow-y-auto">
           {displayList.length > 0 ? (
-            displayList.map((user) => (
-              <div key={user._id} onClick={() => openChat(user)} className="flex items-center gap-3 px-4 py-3 cursor-pointer" style={{ background: selectedUser?._id === user._id ? 'rgba(201,168,76,0.07)' : 'transparent' }}>
-                <div className="relative">
-                  <img src={user.photos?.[0] || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user._id}`} className="w-12 h-12 rounded-full object-cover border-2 border-[#3D1515]" alt="" />
-                  {isOnline(user._id) && (
-                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-[#0D0404] rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
-                  )}
+            displayList.map((item) => {
+              const user = item.user || item; // handle both chat objects and search result user objects
+              const lastMsg = item.lastMessage;
+              const lastTime = item.lastTime;
+              const isSelected = selectedUser?._id === user._id;
+
+              return (
+                <div key={user._id} onClick={() => openChat(user)} className="flex items-center gap-3 px-4 py-3 cursor-pointer transition-all hover:bg-white/5" style={{ background: isSelected ? 'rgba(201,168,76,0.07)' : 'transparent' }}>
+                  <div className="relative">
+                    <img src={user.photos?.[0] || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user._id}`} className="w-12 h-12 rounded-full object-cover border-2 border-[#3D1515]" alt="" />
+                    {isOnline(user._id) && (
+                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-[#0D0404] rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-start mb-0.5">
+                      <h2 className="font-semibold text-sm truncate text-[#FFF5E6]">{user.name}</h2>
+                      {lastTime && <span className="text-[10px] text-[#4A2A1A]">{formatTime(lastTime)}</span>}
+                    </div>
+                    <div className="flex justify-between items-center gap-2">
+                      <p className="text-xs truncate text-[#6B5030] flex-1">
+                        {lastMsg || (isOnline(user._id) ? 'Online' : user.city || 'Offline')}
+                      </p>
+                      {unreadCounts[user._id] > 0 && (
+                        <div className="bg-[#7B1C1C] text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1 shadow-[0_0_8px_rgba(123,28,28,0.5)]">
+                          {unreadCounts[user._id]}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h2 className="font-semibold text-sm truncate text-[#FFF5E6]">{user.name}</h2>
-                  <p className="text-xs truncate text-[#6B5030]">{isOnline(user._id) ? 'Online' : user.city || 'Offline'}</p>
-                </div>
-              </div>
-            ))
+              );
+            })
           ) : (
             <div className="flex flex-col items-center justify-center h-full px-10 text-center opacity-40">
               <div className="text-3xl mb-3">❋</div>
