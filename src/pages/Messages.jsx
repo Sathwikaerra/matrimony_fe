@@ -176,6 +176,7 @@ export default function Messages() {
     });
     socket.on('messageDeleted', ({ msgId }) => setMessages(p => p.filter(m => m._id !== msgId)));
     socket.on('onlineUsers', setOnlineUsers);
+    socket.emit('getOnlineUsers'); // 🔄 Request initial list
     socket.on('partnerTyping', ({ senderId: f }) => { if (selectedUserRef.current?._id === f) setIsPartnerTyping(true); });
     socket.on('partnerStopTyping', ({ senderId: f }) => { if (selectedUserRef.current?._id === f) setIsPartnerTyping(false); });
     return () => {
@@ -205,7 +206,12 @@ export default function Messages() {
           {displayList.length > 0 ? (
             displayList.map((user) => (
               <div key={user._id} onClick={() => openChat(user)} className="flex items-center gap-3 px-4 py-3 cursor-pointer" style={{ background: selectedUser?._id === user._id ? 'rgba(201,168,76,0.07)' : 'transparent' }}>
-                <img src={user.photos?.[0] || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user._id}`} className="w-12 h-12 rounded-full object-cover border-2 border-[#3D1515]" alt="" />
+                <div className="relative">
+                  <img src={user.photos?.[0] || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user._id}`} className="w-12 h-12 rounded-full object-cover border-2 border-[#3D1515]" alt="" />
+                  {isOnline(user._id) && (
+                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-[#0D0404] rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+                  )}
+                </div>
                 <div className="flex-1 min-w-0">
                   <h2 className="font-semibold text-sm truncate text-[#FFF5E6]">{user.name}</h2>
                   <p className="text-xs truncate text-[#6B5030]">{isOnline(user._id) ? 'Online' : user.city || 'Offline'}</p>
@@ -230,7 +236,12 @@ export default function Messages() {
             {/* Chat header */}
             <div className="px-4 py-3 flex items-center gap-3 border-b border-[#2A0F0F] bg-[#110505] flex-shrink-0">
               <button onClick={() => setMobileView('list')} className="md:hidden p-2 text-[#C9A84C]"><IoArrowBack /></button>
-              <img src={selectedUser.photos?.[0] || `https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedUser._id}`} className="w-10 h-10 rounded-full object-cover" alt="" />
+              <div className="relative">
+                <img src={selectedUser.photos?.[0] || `https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedUser._id}`} className="w-10 h-10 rounded-full object-cover" alt="" />
+                {isOnline(selectedUser._id) && (
+                  <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-[#110505] rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+                )}
+              </div>
               <div>
                 <h2 className="font-semibold text-sm text-[#FFF5E6]">{selectedUser.name}</h2>
                 <p className="text-xs text-[#6B5030]">{isOnline(selectedUser._id) ? 'Online' : 'Offline'}</p>
