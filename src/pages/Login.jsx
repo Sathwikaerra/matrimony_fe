@@ -8,6 +8,8 @@ import { login } from "../redux/authSlice";
 import socket from "../services/socket";
 
 
+import { initNotifications } from "../services/notificationService";
+
 export default function Login({ onSwitch }) {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
@@ -35,6 +37,11 @@ export default function Login({ onSwitch }) {
       const { token, user } = response.data;
       const userId = user.id;
       dispatch(login({ token, userId, user }));
+      
+      // Initialize Push Notifications
+      await initNotifications(userId);
+      socket.emit('registerUser', userId);
+
       toast.success("Welcome back!", { style: { background: '#1F0A0A', color: '#FFF5E6' } });
       navigate("/home");
     } catch (error) {
