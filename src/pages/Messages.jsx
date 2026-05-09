@@ -85,7 +85,9 @@ export default function Messages() {
     if (!value.trim()) { setSearchUsers([]); return; }
     setSearchLoading(true);
     try {
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/auth/search?search=${value}`);
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/auth/search?search=${value}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setSearchUsers(res.data.users || []);
     } catch (err) { console.error(err); } finally { setSearchLoading(false); }
   };
