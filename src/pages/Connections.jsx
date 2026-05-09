@@ -17,6 +17,13 @@ export default function Connections() {
     const [activeTab, setActiveTab] = useState("received");
     const [data, setData] = useState({ received: [], sent: [], accepted: [], rejected: [] });
     const [loading, setLoading] = useState(true);
+    const [tick, setTick] = useState(0);
+
+    // Update time-ago labels every minute
+    useEffect(() => {
+        const timer = setInterval(() => setTick(t => t + 1), 60000);
+        return () => clearInterval(timer);
+    }, []);
 
     const fetchAll = useCallback(async () => {
         setLoading(true);
@@ -31,6 +38,8 @@ export default function Connections() {
             const sentList     = sentRes.data.requests     || [];
             const declinedList = declinedRes.data.requests || [];
 
+            console.log("Rejected Data Debug:", { sentList, declinedList });
+
             setData({
                 received: pendingRes.data.requests || [],
                 sent:     sentList.filter(r => r.status === "pending"),
@@ -39,14 +48,14 @@ export default function Connections() {
                     ...sentList.filter(r => r.status === "accepted"),
                 ],
                 rejected: [
-                    ...sentList.filter(r => r.status === "rejected").map(r => ({
+                    ...sentList.filter(r => r.status === "rejected" || r.status === "declined").map(r => ({
                         ...r,
-                        _displayUser: r.receiver,
+                        _displayUser: r.receiver || {},
                         _type: "sent"
                     })),
                     ...declinedList.map(r => ({
                         ...r,
-                        _displayUser: r.sender,
+                        _displayUser: r.sender || {},
                         _type: "received"
                     })),
                 ],
@@ -74,50 +83,53 @@ export default function Connections() {
         fetchAll();
     };
 
-    const ProfileCard = ({ user, meta, actions }) => (
-        <div style={{
-            background: "#150707", border: "1px solid #3D1515", borderRadius: 16,
-            padding: "16px", display: "flex", flexDirection: "column",
-            gap: 12, marginBottom: 16, boxShadow: "0 4px 20px rgba(0,0,0,0.2)"
-        }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <div style={{ padding: 2, borderRadius: "50%", background: "linear-gradient(135deg,#C9A84C,#7B1C1C)", flexShrink: 0 }}>
-                    <img
-                        src={user.photos?.[0] || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user._id}`}
-                        alt={user.name}
-                        style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "cover", border: "2px solid #150707", display: "block" }}
-                    />
+    const ProfileCard = ({ user, meta, actions }) => {
+        if (!user) return null;
+        return (
+            <div style={{
+                background: "#150707", border: "1px solid #3D1515", borderRadius: 16,
+                padding: "16px", display: "flex", flexDirection: "column",
+                gap: 12, marginBottom: 16, boxShadow: "0 4px 20px rgba(0,0,0,0.2)"
+            }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                    <div style={{ padding: 2, borderRadius: "50%", background: "linear-gradient(135deg,#C9A84C,#7B1C1C)", flexShrink: 0 }}>
+                        <img
+                            src={user.photos?.[0] || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user._id}`}
+                            alt={user.name || "User"}
+                            style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "cover", border: "2px solid #150707", display: "block" }}
+                        />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <h4 style={{ color: "#FFF5E6", fontWeight: 700, fontSize: 15, margin: "0 0 4px" }}>{user.name || "Unknown User"}</h4>
+                        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 8px" }}>
+                            {user.city && (
+                                <span style={{ color: "#C9A84C", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
+                                    <span style={{ fontSize: 10 }}>📍</span> {user.city}
+                                </span>
+                            )}
+                            {user.occupation && (
+                                <span style={{ color: "#8B6B52", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
+                                    <span style={{ opacity: 0.5 }}>·</span> {user.occupation}
+                                </span>
+                            )}
+                        </div>
+                    </div>
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                    <h4 style={{ color: "#FFF5E6", fontWeight: 700, fontSize: 15, margin: "0 0 4px" }}>{user.name}</h4>
-                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 8px" }}>
-                        {user.city && (
-                            <span style={{ color: "#C9A84C", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
-                                <span style={{ fontSize: 10 }}>📍</span> {user.city}
-                            </span>
-                        )}
-                        {user.occupation && (
-                            <span style={{ color: "#8B6B52", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
-                                <span style={{ opacity: 0.5 }}>·</span> {user.occupation}
-                            </span>
-                        )}
+
+                <div style={{ 
+                    display: "flex", alignItems: "center", justifyContent: "space-between", 
+                    paddingTop: 10, borderTop: "1px solid #2A0F0F", marginTop: 4 
+                }}>
+                    <div style={{ color: "#4A2A1A", fontSize: 11, fontStyle: "italic" }}>
+                        {meta}
+                    </div>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        {actions}
                     </div>
                 </div>
             </div>
-
-            <div style={{ 
-                display: "flex", alignItems: "center", justifyContent: "space-between", 
-                paddingTop: 10, borderTop: "1px solid #2A0F0F", marginTop: 4 
-            }}>
-                <div style={{ color: "#4A2A1A", fontSize: 11, fontStyle: "italic" }}>
-                    {meta}
-                </div>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    {actions}
-                </div>
-            </div>
-        </div>
-    );
+        );
+    };
 
     const Badge = ({ type }) => {
         const map = {
@@ -164,7 +176,7 @@ export default function Connections() {
                 <ProfileCard
                     key={req._id}
                     user={req.sender}
-                    meta={`Sent ${timeAgo(req.createdAt)}`}
+                    meta={`Sent ${timeAgo(req.updatedAt || req.createdAt)}`}
                     actions={<>
                         <BtnPrimary onClick={() => accept(req._id)}>Accept</BtnPrimary>
                         <BtnOutline onClick={() => reject(req._id)}>Decline</BtnOutline>
@@ -179,7 +191,7 @@ export default function Connections() {
                 <ProfileCard
                     key={req._id}
                     user={req.receiver}
-                    meta={`Sent ${timeAgo(req.createdAt)}`}
+                    meta={`Sent ${timeAgo(req.updatedAt || req.createdAt)}`}
                     actions={<>
                         <Badge type="pending" />
                         <BtnOutline onClick={() => withdraw(req._id)}>Withdraw</BtnOutline>
@@ -276,8 +288,17 @@ function Empty({ msg }) {
 
 function timeAgo(dateStr) {
     if (!dateStr) return "";
-    const diff = (Date.now() - new Date(dateStr)) / 1000;
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return "";
+
+    const now = Date.now();
+    const diff = (now - date.getTime()) / 1000;
+
+    // Debugging time drift
+    if (Math.abs(diff) > 0 && Math.abs(diff) < 30) console.log("Time drift detected (seconds):", diff);
+
+    if (diff < 60) return "just now";
+    if (diff < 3600) return `${Math.floor(Math.max(0, diff) / 60)}m ago`;
     if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
     return `${Math.floor(diff / 86400)}d ago`;
 }

@@ -267,6 +267,7 @@ export default function Home() {
 
   // Connections
   const [requestedIds, setRequestedIds] = useState([]);
+  const [requestedData, setRequestedData] = useState({}); // { receiverId: requestId }
   const [pendingInterestIds, setPendingInterestIds] = useState([]);
 
   // Like animation tracker
@@ -288,33 +289,72 @@ export default function Home() {
   const [drawerUserId, setDrawerUserId] = useState(null);
 
   // ── Fetch sent connection IDs ─────────────────────────────────────────────
+  const fetchSentIds = async () => {
+    if (!token) return;
+    try {
+      const res = await axios.get(
+        `${import.meta.env.VITE_API_URL}/api/connections/sent`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const mapping = {};
+      res.data.requests.forEach(r => {
+        const rId = r.receiver?._id || r.receiver;
+        if (rId) mapping[rId] = r._id;
+      });
+      setRequestedData(mapping);
+      setRequestedIds(res.data.requests.map(r => r.receiver?._id || r.receiver));
+    } catch (err) { console.error(err); }
+  };
+
   useEffect(() => {
-    const fetchSentIds = async () => {
-      if (!token) return;
-      try {
-        const res = await axios.get(
-          `${import.meta.env.VITE_API_URL}/api/connections/sent`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        setRequestedIds(res.data.requests.map(r => r.receiver._id));
-      } catch (err) { console.error(err); }
-    };
     fetchSentIds();
   }, []);
 
   // ── Interested handler ────────────────────────────────────────────────────
   const handleInterested = async (receiverId) => {
-    if (requestedIds.includes(receiverId) || pendingInterestIds.includes(receiverId)) return;
+    if (pendingInterestIds.includes(receiverId)) return;
+
+    const isRequested = requestedIds.includes(receiverId);
     setPendingInterestIds(prev => [...prev, receiverId]);
+
     try {
-      await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/connections/send/${receiverId}`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setRequestedIds(prev => [...prev, receiverId]);
-    } catch (err) { 
-      console.error(err); 
+      if (isRequested) {
+        // Withdraw/Cancel request
+        const requestId = requestedData[receiverId];
+        if (requestId) {
+          await axios.patch(
+            `${import.meta.env.VITE_API_URL}/api/connections/withdraw/${requestId}`,
+            {},
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          setRequestedIds(prev => prev.filter(id => id !== receiverId));
+          setRequestedData(prev => {
+            const next = { ...prev };
+            delete next[receiverId];
+            return next;
+          });
+        }
+      } else {
+        // Send request
+        const res = await axios.post(
+          `${import.meta.env.VITE_API_URL}/api/connections/send/${receiverId}`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        // Robustly find the new request object/ID
+        const newReq = res.data.request || res.data.connectionRequest || res.data.data || res.data;
+        const newId = newReq?._id || newReq?.id || (typeof newReq === 'string' && newReq.length === 24 ? newReq : null);
+
+        if (newId) {
+          setRequestedData(prev => ({ ...prev, [receiverId]: newId }));
+        } else {
+          // Fallback: Sync with server to get the ID
+          fetchSentIds();
+        }
+        setRequestedIds(prev => [...prev, receiverId]);
+      }
+    } catch (err) {
+      console.error("Connection error:", err.response?.data || err.message);
     } finally {
       setPendingInterestIds(prev => prev.filter(id => id !== receiverId));
     }
@@ -326,7 +366,7 @@ export default function Home() {
     fetchingRef.current = true;
     try {
       const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/auth/users?page=1&limit=5`,
+        `${import.meta.env.VITE_API_URL}/auth/users?page=${pageRef.current}&limit=5`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       console.log("ressss", response?.data?.users)
@@ -461,14 +501,15 @@ export default function Home() {
   const showResultsPanel = showDropdown && (searchLoading || searchResults.length > 0 || debouncedQuery.trim());
 
   // ─────────────────────────────────────────────────────────────────────────
-  // PostCard — inline so it can access state setters without prop drilling
+  // renderPostCard — simple function to avoid remounting components
   // ─────────────────────────────────────────────────────────────────────────
-  const PostCard = useCallback(({ post }) => {
+  const renderPostCard = (post) => {
     const isCommentsOpen = openComments[post.id];
     const isAnimating = likeAnimating[post.id];
 
     return (
       <div
+        key={post.id}
         className="overflow-hidden flex flex-col"
         style={{ background: "#150707", border: "1px solid #3D1515", borderRadius: 16 }}
       >
@@ -486,21 +527,8 @@ export default function Home() {
               <h2 style={{ color: "#FFF5E6", fontWeight: 600, fontSize: 14, margin: 0 }}>{post.name}</h2>
             </div>
           </div>
-          {/* <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
-            {post.scoreMatch && (
-              <div style={{
-                background: "linear-gradient(135deg, #7B1C1C, #A0341E)",
-                borderRadius: 6, padding: "2px 6px", color: "#FFF",
-                fontSize: 9, fontWeight: 800, whiteSpace: "nowrap",
-                textTransform: "uppercase", letterSpacing: "0.02em"
-              }}>
-                {post.scoreMatch}% Match
-              </div>
-            )}
-
-          </div> */}
         </div>
-              
+
         {/* ── Photo ── */}
         <div style={{ position: "relative" }}>
           <img
@@ -578,7 +606,7 @@ export default function Home() {
                 <FaRegStar size={20} />
               )}
               <span style={{ fontSize: 11, fontWeight: 600 }}>
-                {pendingInterestIds.includes(post.id) ? "Sending..." : requestedIds.includes(post.id) ? "Request Sent" : "Connect"}
+                {pendingInterestIds.includes(post.id) ? "Wait..." : requestedIds.includes(post.id) ? "Cancel Request" : "Connect"}
               </span>
             </button>
           </div>
@@ -602,7 +630,7 @@ export default function Home() {
         </div>
       </div>
     );
-  }, [posts, openComments, likeAnimating, requestedIds]);
+  };
 
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -767,9 +795,7 @@ export default function Home() {
           endMessage={<p style={{ textAlign: "center", color: "#3D1515", padding: 16, gridColumn: "1 / -1" }}>❋ No more Matching profiles</p>}
         >
           <div style={{ display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>
-            {posts.map((post) => (
-              <PostCard key={post.id} post={post} />
-            ))}
+            {posts.map((post) => renderPostCard(post))}
           </div>
         </InfiniteScroll>
       )}
