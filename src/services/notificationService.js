@@ -5,14 +5,20 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // ─── Request Permission ────────────────────────────────────────────────────────
 export async function requestNotificationPermission() {
+  console.log('🔍 Checking notification support...');
   if (!('Notification' in window)) {
-    console.warn('Notifications not supported');
+    console.warn('❌ Notifications not supported in this browser');
     return false;
   }
+  console.log('📊 Current permission:', Notification.permission);
   if (Notification.permission === 'granted') return true;
-  if (Notification.permission === 'denied') return false;
+  if (Notification.permission === 'denied') {
+    console.warn('❌ Notification permission already denied');
+    return false;
+  }
 
   const permission = await Notification.requestPermission();
+  console.log('📈 Permission request result:', permission);
   return permission === 'granted';
 }
 
@@ -26,11 +32,13 @@ export async function subscribeToPush(userId) {
     }
 
     // Get FCM Token
+    console.log('🔑 Requesting FCM token...');
     const fcmToken = await requestForToken();
     if (!fcmToken) {
-      console.warn('Could not retrieve FCM token');
+      console.warn('❌ Could not retrieve FCM token. Check your firebase-config and internet connection.');
       return false;
     }
+    console.log('✅ FCM Token received:', fcmToken.substring(0, 10) + '...');
 
     // Save token to backend
     const authToken = localStorage.getItem('token');

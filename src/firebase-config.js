@@ -32,12 +32,10 @@ export const requestForToken = async () => {
   }
 };
 
-export const onMessageListener = () =>
-  new Promise((resolve) => {
-    onMessage(messaging, (payload) => {
-      console.log("Payload received in foreground:", payload);
-      resolve(payload);
-    });
+export const onMessageListener = (callback) =>
+  onMessage(messaging, (payload) => {
+    console.log("Payload received in foreground:", payload);
+    if (callback) callback(payload);
   });
 
 export default app;

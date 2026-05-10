@@ -113,12 +113,18 @@ export default function Messages() {
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/messages/${senderId}/${receiverId}`);
       setMessages(res.data.messages || []);
       setUnreadCounts((prev) => ({ ...prev, [receiverId]: 0 }));
+      
+      // Let backend and other components know unread count has changed
       socket.emit('refreshUnreadCount', { userId: senderId }); 
+      
+      // Also explicitly mark as read in case the GET didn't cover everything
+      await axios.patch(`${import.meta.env.VITE_API_URL}/api/messages/mark-read/${receiverId}`, { receiverId: senderId });
     } catch (err) { console.error(err); }
   };
 
   const openChat = (user) => {
     setSelectedUser(user);
+    selectedUserRef.current = user; // ✅ Update ref immediately
     setIsPartnerTyping(false);
     fetchMessages(user._id);
     setMobileView('chat');
@@ -178,21 +184,33 @@ export default function Messages() {
 
   useEffect(() => {
     if (!senderId) return;
+    console.log('📡 Messages.jsx: Setting up socket listeners for user:', senderId);
     fetchRecentChats();
     // Socket logic handled globally and via listeners below
 
     const onReceiveMessage = (data) => {
+      console.log('📨 Message received via socket:', data);
+      const currentSelectedId = selectedUserRef.current?._id?.toString();
+      const incomingSenderId = data.senderId?.toString();
+      
+      const isFromSelected = currentSelectedId === incomingSenderId;
+      console.log(`🔗 Comparison: ${currentSelectedId} === ${incomingSenderId} ? ${isFromSelected}`);
+      
       // 1. Immediate local update for "instant" feel
-      if (selectedUserRef.current?._id === data.senderId) {
+      if (isFromSelected) {
         setMessages(p => [...p, data]);
+        // Auto-mark as read if we are looking at the chat
+        axios.patch(`${import.meta.env.VITE_API_URL}/api/messages/mark-read/${data.senderId}`, { receiverId: senderId })
+          .then(() => socket.emit('refreshUnreadCount', { userId: senderId }))
+          .catch(err => console.error('Auto-read failed:', err));
       } else {
         setUnreadCounts(p => ({ ...p, [data.senderId]: (p[data.senderId] || 0) + 1 }));
       }
       
-      // 2. Delayed background sync to ensure DB is ready
+      // 2. Delayed background sync for the sidebar list
       setTimeout(() => {
         fetchRecentChats();
-      }, 300);
+      }, 500);
     };
 
     const onMessageDeleted = ({ msgId }) => setMessages(p => p.filter(m => m._id !== msgId));

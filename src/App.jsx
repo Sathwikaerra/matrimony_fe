@@ -101,7 +101,14 @@ export default function App() {
 
     // ─── Socket Logic ────────────────────────────────────────────────────────
     socket.connect();
-    socket.emit("registerUser", userId);
+
+    const onConnect = () => {
+      console.log("🔌 Socket connected, registering user:", userId);
+      socket.emit("registerUser", userId);
+    };
+
+    socket.on("connect", onConnect);
+    if (socket.connected) onConnect(); // if already connected, register immediately
 
     socket.on("receiveMessage", handleReceiveMessage);
     socket.on("notificationReceived", handleNotificationReceived);
@@ -117,20 +124,20 @@ export default function App() {
     setupFirebase();
 
     // ─── Firebase Foreground Logic ───────────────────────────────────────────
-    onMessageListener()
-      .then((payload) => {
-        console.log("Foreground push notification:", payload);
-        toast.success(payload.notification.title || "New push notification", {
-          icon: "🔥",
-          position: "top-right",
-          style: { background: "#1F0A0A", color: "#FFF5E6", border: "1px solid #C9A84C33" },
-        });
-      })
-      .catch((err) => console.log("Failed to receive foreground message:", err));
+    const unsubscribeFCM = onMessageListener((payload) => {
+      console.log("Foreground push notification:", payload);
+      toast.success(payload.notification?.title || "New push notification", {
+        icon: "🔥",
+        position: "top-right",
+        style: { background: "#1F0A0A", color: "#FFF5E6", border: "1px solid #C9A84C33" },
+      });
+    });
 
     return () => {
+      socket.off("connect", onConnect);
       socket.off("receiveMessage", handleReceiveMessage);
       socket.off("notificationReceived", handleNotificationReceived);
+      if (typeof unsubscribeFCM === 'function') unsubscribeFCM();
     };
   }, [userId]);
 
