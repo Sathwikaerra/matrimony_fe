@@ -16,6 +16,7 @@ import Signup from "./pages/Signup";
 import Messages from "./pages/Messages";
 import Connections from "./pages/Connections";
 import Profile from "./pages/Profile";
+import AdminDashboard from "./pages/AdminDashboard";
 import Layout from "./component/Layout";
 import Landing from "./pages/Landing";
 
@@ -152,6 +153,7 @@ export default function App() {
               <Route path="/profile" element={<Layout><Profile /></Layout>} />
               <Route path="/messages" element={<Layout fullScreen><Messages /></Layout>} />
               <Route path="/connections" element={<Layout><Connections /></Layout>} />
+              <Route path="/admin" element={<Layout><AdminDashboard /></Layout>} />
               <Route path="*" element={<Navigate to="/home" replace />} />
             </>
           ) : (

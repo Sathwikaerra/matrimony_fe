@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import axios from "axios";
 import { logout } from "../redux/authSlice";
-import { FaHome, FaRegHeart, FaBars, FaTimes, FaUserPlus, FaBell, FaUser, FaSignOutAlt } from "react-icons/fa";
+import { FaHome, FaRegHeart, FaBars, FaTimes, FaUserPlus, FaBell, FaUser, FaSignOutAlt, FaUserShield } from "react-icons/fa";
 import { HiOutlineChatBubbleLeftRight } from "react-icons/hi2";
 import socket from "../services/socket";
 
@@ -67,6 +67,14 @@ export default function Navbar() {
     { to: "/notifications", icon: <FaBell size={20} />, label: "Notifications" },
     { to: "/profile", icon: <FaUser size={20} />, label: "Profile" },
   ];
+
+  if (user?.role === 'admin') {
+    navItems.push({ 
+      to: "/admin", 
+      icon: <FaUserShield size={20} />, 
+      label: "Admin" 
+    });
+  }
 
   // Mobile only shows 4 items
   const mobileNavItems = navItems.filter(item => item.to !== "/notifications");
