@@ -181,7 +181,7 @@ export default function Messages() {
     fetchRecentChats();
     // Socket logic handled globally and via listeners below
 
-    socket.on('receiveMessage', (data) => {
+    const onReceiveMessage = (data) => {
       // 1. Immediate local update for "instant" feel
       if (selectedUserRef.current?._id === data.senderId) {
         setMessages(p => [...p, data]);
@@ -193,15 +193,27 @@ export default function Messages() {
       setTimeout(() => {
         fetchRecentChats();
       }, 300);
-    });
-    socket.on('messageDeleted', ({ msgId }) => setMessages(p => p.filter(m => m._id !== msgId)));
-    socket.on('onlineUsers', setOnlineUsers);
+    };
+
+    const onMessageDeleted = ({ msgId }) => setMessages(p => p.filter(m => m._id !== msgId));
+    const onOnlineUsers = setOnlineUsers;
+    const onPartnerTyping = ({ senderId: f }) => { if (selectedUserRef.current?._id === f) setIsPartnerTyping(true); };
+    const onPartnerStopTyping = ({ senderId: f }) => { if (selectedUserRef.current?._id === f) setIsPartnerTyping(false); };
+
+    socket.on('receiveMessage', onReceiveMessage);
+    socket.on('messageDeleted', onMessageDeleted);
+    socket.on('onlineUsers', onOnlineUsers);
+    socket.on('partnerTyping', onPartnerTyping);
+    socket.on('partnerStopTyping', onPartnerStopTyping);
+    
     socket.emit('getOnlineUsers'); // 🔄 Request initial list
-    socket.on('partnerTyping', ({ senderId: f }) => { if (selectedUserRef.current?._id === f) setIsPartnerTyping(true); });
-    socket.on('partnerStopTyping', ({ senderId: f }) => { if (selectedUserRef.current?._id === f) setIsPartnerTyping(false); });
+
     return () => {
-      socket.off('receiveMessage'); socket.off('messageDeleted'); socket.off('onlineUsers');
-      socket.off('partnerTyping'); socket.off('partnerStopTyping');
+      socket.off('receiveMessage', onReceiveMessage); 
+      socket.off('messageDeleted', onMessageDeleted); 
+      socket.off('onlineUsers', onOnlineUsers);
+      socket.off('partnerTyping', onPartnerTyping); 
+      socket.off('partnerStopTyping', onPartnerStopTyping);
     };
   }, [senderId]);
 

@@ -83,13 +83,15 @@ export default function Connections() {
         fetchAll();
         
         // Real-time updates
-        socket.on("notificationReceived", () => {
+        const onNotification = () => {
             console.log("Real-time update triggered via socket");
             fetchAll();
-        });
+        };
+
+        socket.on("notificationReceived", onNotification);
 
         return () => {
-            socket.off("notificationReceived");
+            socket.off("notificationReceived", onNotification);
         };
     }, [fetchAll]);
 

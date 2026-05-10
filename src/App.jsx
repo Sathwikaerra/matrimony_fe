@@ -21,7 +21,7 @@ import Landing from "./pages/Landing";
 
 import socket from "./services/socket";
 import { initNotifications } from "./services/notificationService";
-import { requestForToken } from "./firebase-config"; // optional if in same file
+import { requestForToken, onMessageListener } from "./firebase-config";
 
 
 
@@ -62,15 +62,8 @@ export default function App() {
       return;
     }
 
-    // Connect and register
-    socket.connect();
-    socket.emit("registerUser", userId);
-
-    // Initialize push notifications
-    initNotifications(userId);
-
-    // Global Listeners
-    socket.on("receiveMessage", (data) => {
+    // ─── Named Listeners ─────────────────────────────────────────────────────
+    const handleReceiveMessage = (data) => {
       // 1. In-app Toast
       if (!window.location.pathname.startsWith("/messages")) {
         toast.success(`New message from ${data.senderName || "someone"}`, {
@@ -87,12 +80,12 @@ export default function App() {
           icon: "/favicon.svg"
         });
       }
-    });
+    };
 
-    socket.on("notificationReceived", (data) => {
+    const handleNotificationReceived = (data) => {
       // 1. In-app Toast
       toast.success(data.message || "New notification", {
-        icon: data.type === "like" ? "❤️" : "✨",
+        icon: data.type === "like" ? "❤️" : data.type === "comment" ? "💬" : "✨",
         position: "top-right",
         style: { background: "#1F0A0A", color: "#FFF5E6", border: "1px solid #C9A84C33" },
       });
@@ -104,11 +97,40 @@ export default function App() {
           icon: "/favicon.svg"
         });
       }
-    });
+    };
+
+    // ─── Socket Logic ────────────────────────────────────────────────────────
+    socket.connect();
+    socket.emit("registerUser", userId);
+
+    socket.on("receiveMessage", handleReceiveMessage);
+    socket.on("notificationReceived", handleNotificationReceived);
+
+    // ─── Firebase Push Logic ─────────────────────────────────────────────────
+    const setupFirebase = async () => {
+      try {
+        await initNotifications(userId);
+      } catch (err) {
+        console.error("Firebase init failed:", err);
+      }
+    };
+    setupFirebase();
+
+    // ─── Firebase Foreground Logic ───────────────────────────────────────────
+    onMessageListener()
+      .then((payload) => {
+        console.log("Foreground push notification:", payload);
+        toast.success(payload.notification.title || "New push notification", {
+          icon: "🔥",
+          position: "top-right",
+          style: { background: "#1F0A0A", color: "#FFF5E6", border: "1px solid #C9A84C33" },
+        });
+      })
+      .catch((err) => console.log("Failed to receive foreground message:", err));
 
     return () => {
-      socket.off("receiveMessage");
-      socket.off("notificationReceived");
+      socket.off("receiveMessage", handleReceiveMessage);
+      socket.off("notificationReceived", handleNotificationReceived);
     };
   }, [userId]);
 
