@@ -21,8 +21,30 @@ import Landing from "./pages/Landing";
 
 import socket from "./services/socket";
 import { initNotifications } from "./services/notificationService";
+import { requestForToken } from "./firebase-config"; // optional if in same file
+
+
 
 function AuthGate() {
+
+
+
+  useEffect(() => {
+
+    Notification.requestPermission().then((permission) => {
+
+      if (permission === "granted") {
+
+        requestForToken();
+
+      }
+
+    });
+
+  }, []);
+
+
+
   const [showSignup, setShowSignup] = useState(false);
   return showSignup ? (
     <Signup onSwitch={() => setShowSignup(false)} />

@@ -1,31 +1,7 @@
 // src/services/notificationService.js
+import { requestForToken } from "../firebase-config";
 
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
-// ─── Helpers ───────────────────────────────────────────────────────────────────
-function urlBase64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = atob(base64);
-  return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
-}
-
-// ─── Register Service Worker ───────────────────────────────────────────────────
-export async function registerServiceWorker() {
-  if (!('serviceWorker' in navigator)) {
-    console.warn('Service Workers not supported');
-    return null;
-  }
-  try {
-    const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-    console.log('✅ Service Worker registered');
-    return reg;
-  } catch (err) {
-    console.error('❌ SW registration failed:', err);
-    return null;
-  }
-}
 
 // ─── Request Permission ────────────────────────────────────────────────────────
 export async function requestNotificationPermission() {
@@ -40,7 +16,7 @@ export async function requestNotificationPermission() {
   return permission === 'granted';
 }
 
-// ─── Subscribe User ────────────────────────────────────────────────────────────
+// ─── Subscribe User (FCM) ──────────────────────────────────────────────────────
 export async function subscribeToPush(userId) {
   try {
     const granted = await requestNotificationPermission();
@@ -49,33 +25,28 @@ export async function subscribeToPush(userId) {
       return false;
     }
 
-    const reg = await navigator.serviceWorker.ready;
-
-    // Check if already subscribed
-    let subscription = await reg.pushManager.getSubscription();
-
-    if (!subscription) {
-      subscription = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-      });
+    // Get FCM Token
+    const fcmToken = await requestForToken();
+    if (!fcmToken) {
+      console.warn('Could not retrieve FCM token');
+      return false;
     }
 
-    // Save subscription to backend
-    const token = localStorage.getItem('token');
-    await fetch(`${API_BASE}/api/notifications/subscribe`, {
+    // Save token to backend
+    const authToken = localStorage.getItem('token');
+    await fetch(`${API_BASE}/api/notifications/save-token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${authToken}`,
       },
-      body: JSON.stringify({ userId, subscription }),
+      body: JSON.stringify({ token: fcmToken, deviceType: 'web' }),
     });
 
-    console.log('✅ Push subscription saved');
+    console.log('✅ FCM Token saved to backend');
     return true;
   } catch (err) {
-    console.error('❌ Push subscription failed:', err);
+    console.error('❌ FCM subscription failed:', err);
     return false;
   }
 }
@@ -83,23 +54,20 @@ export async function subscribeToPush(userId) {
 // ─── Unsubscribe User ──────────────────────────────────────────────────────────
 export async function unsubscribeFromPush(userId) {
   try {
-    const reg = await navigator.serviceWorker.ready;
-    const subscription = await reg.pushManager.getSubscription();
-    if (!subscription) return;
+    const fcmToken = await requestForToken();
+    if (!fcmToken) return;
 
-    await subscription.unsubscribe();
-
-    const token = localStorage.getItem('token');
-    await fetch(`${API_BASE}/api/notifications/unsubscribe`, {
+    const authToken = localStorage.getItem('token');
+    await fetch(`${API_BASE}/api/notifications/remove-token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${authToken}`,
       },
-      body: JSON.stringify({ userId }),
+      body: JSON.stringify({ token: fcmToken }),
     });
 
-    console.log('✅ Unsubscribed from push');
+    console.log('✅ FCM Token removed from backend');
   } catch (err) {
     console.error('❌ Unsubscribe failed:', err);
   }
@@ -114,6 +82,17 @@ export function getNotificationStatus() {
 // ─── Initialize (call on login) ────────────────────────────────────────────────
 export async function initNotifications(userId) {
   if (!userId) return;
-  await registerServiceWorker();
+  
+  // Register Service Worker if needed (Firebase does this mostly, but we can ensure)
+  if ('serviceWorker' in navigator) {
+    try {
+      await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+      console.log('✅ Firebase Service Worker registered');
+    } catch (err) {
+      console.error('❌ Firebase SW registration failed:', err);
+    }
+  }
+
   await subscribeToPush(userId);
 }
+
