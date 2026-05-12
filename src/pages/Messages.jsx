@@ -132,32 +132,42 @@ export default function Messages() {
     setTimeout(() => inputRef.current?.focus(), 150);
   };
 
-  const sendMessage = async () => {
-    if (!text.trim() || !selectedUser || sending) return;
-    setSending(true);
-    const tempId = `temp-${Date.now()}`;
-    const messageData = {
-      senderId,
-      receiverId: selectedUser._id,
-      message: text.trim(),
-      createdAt: new Date().toISOString(),
-      _id: tempId,
-      status: 'sent',
-    };
-    setMessages((prev) => [...prev, messageData]);
-    setText('');
-    try {
-      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/messages/send`, messageData);
-      const saved = res.data.messageData;
-      setMessages((prev) => prev.map((m) => (m._id === tempId ? saved : m)));
-      socket.emit('sendMessage', { ...saved, senderName });
-      socket.emit('stopTyping', { senderId, receiverId: selectedUser._id });
-      fetchRecentChats();
-    } catch (err) {
-      console.error(err);
-      setMessages((prev) => prev.filter((m) => m._id !== tempId));
-    } finally { setSending(false); }
+// ── Fix 1: sendMessage — emit refreshUnreadCount to receiver ──────────────────
+const sendMessage = async () => {
+  if (!text.trim() || !selectedUser || sending) return;
+  setSending(true);
+  const tempId = `temp-${Date.now()}`;
+  const messageData = {
+    senderId,
+    receiverId: selectedUser._id,
+    message: text.trim(),
+    createdAt: new Date().toISOString(),
+    _id: tempId,
   };
+  setMessages((prev) => [...prev, messageData]);
+  setText('');
+  try {
+    const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/messages/send`, messageData);
+    const saved = res.data.messageData;
+
+    // Replace optimistic bubble with real DB doc
+    setMessages((prev) => prev.map((m) => (m._id === tempId ? saved : m)));
+
+    // Tell receiver's socket to show the message
+    socket.emit('sendMessage', { ...saved, senderName });
+    socket.emit('stopTyping', { senderId, receiverId: selectedUser._id });
+
+    // ✅ Tell receiver's unread badge to update
+    socket.emit('refreshUnreadCount', { userId: selectedUser._id });
+
+    fetchRecentChats();
+  } catch (err) {
+    console.error(err);
+    setMessages((prev) => prev.filter((m) => m._id !== tempId));
+  } finally {
+    setSending(false); 
+  }
+};
 
   const deleteMessage = async (msgId) => {
     setContextMenu(null);
@@ -182,58 +192,64 @@ export default function Messages() {
     }, 1500);
   };
 
-  useEffect(() => {
-    if (!senderId) return;
-    console.log('📡 Messages.jsx: Setting up socket listeners for user:', senderId);
-    fetchRecentChats();
-    // Socket logic handled globally and via listeners below
+// ── Fix 2: socket listeners — add dedup + refreshUnreadCount ──────────────────
+useEffect(() => {
+  if (!senderId) return;
+  fetchRecentChats();
 
-    const onReceiveMessage = (data) => {
-      console.log('📨 Message received via socket:', data);
-      const currentSelectedId = selectedUserRef.current?._id?.toString();
-      const incomingSenderId = data.senderId?.toString();
-      
-      const isFromSelected = currentSelectedId === incomingSenderId;
-      console.log(`🔗 Comparison: ${currentSelectedId} === ${incomingSenderId} ? ${isFromSelected}`);
-      
-      // 1. Immediate local update for "instant" feel
-      if (isFromSelected) {
-        setMessages(p => [...p, data]);
-        // Auto-mark as read if we are looking at the chat
-        axios.patch(`${import.meta.env.VITE_API_URL}/api/messages/mark-read/${data.senderId}`, { receiverId: senderId })
-          .then(() => socket.emit('refreshUnreadCount', { userId: senderId }))
-          .catch(err => console.error('Auto-read failed:', err));
-      } else {
-        setUnreadCounts(p => ({ ...p, [data.senderId]: (p[data.senderId] || 0) + 1 }));
-      }
-      
-      // 2. Delayed background sync for the sidebar list
-      setTimeout(() => {
-        fetchRecentChats();
-      }, 500);
-    };
+  const onReceiveMessage = (data) => {
+    const currentSelectedId = selectedUserRef.current?._id?.toString();
+    const incomingSenderId  = data.senderId?.toString();
+    const isFromSelected    = currentSelectedId === incomingSenderId;
 
-    const onMessageDeleted = ({ msgId }) => setMessages(p => p.filter(m => m._id !== msgId));
-    const onOnlineUsers = setOnlineUsers;
-    const onPartnerTyping = ({ senderId: f }) => { if (selectedUserRef.current?._id === f) setIsPartnerTyping(true); };
-    const onPartnerStopTyping = ({ senderId: f }) => { if (selectedUserRef.current?._id === f) setIsPartnerTyping(false); };
+    if (isFromSelected) {
+      setMessages((prev) => {
+        // ✅ Deduplicate: skip if _id already exists
+        if (prev.some((m) => m._id === data._id)) return prev;
+        return [...prev, data];
+      });
+      axios
+        .patch(`${import.meta.env.VITE_API_URL}/api/messages/mark-read/${data.senderId}`, {
+          receiverId: senderId,
+        })
+        .then(() => socket.emit('refreshUnreadCount', { userId: senderId }))
+        .catch(console.error);
+    } else {
+      setUnreadCounts((p) => ({
+        ...p,
+        [data.senderId]: (p[data.senderId] || 0) + 1,
+      }));
+    }
 
-    socket.on('receiveMessage', onReceiveMessage);
-    socket.on('messageDeleted', onMessageDeleted);
-    socket.on('onlineUsers', onOnlineUsers);
-    socket.on('partnerTyping', onPartnerTyping);
-    socket.on('partnerStopTyping', onPartnerStopTyping);
-    
-    socket.emit('getOnlineUsers'); // 🔄 Request initial list
+    setTimeout(fetchRecentChats, 500);
+  };
 
-    return () => {
-      socket.off('receiveMessage', onReceiveMessage); 
-      socket.off('messageDeleted', onMessageDeleted); 
-      socket.off('onlineUsers', onOnlineUsers);
-      socket.off('partnerTyping', onPartnerTyping); 
-      socket.off('partnerStopTyping', onPartnerStopTyping);
-    };
-  }, [senderId]);
+  const onMessageDeleted      = ({ msgId }) => setMessages((p) => p.filter((m) => m._id !== msgId));
+  const onOnlineUsers         = setOnlineUsers;
+  const onPartnerTyping       = ({ senderId: f }) => { if (selectedUserRef.current?._id === f) setIsPartnerTyping(true);  };
+  const onPartnerStopTyping   = ({ senderId: f }) => { if (selectedUserRef.current?._id === f) setIsPartnerTyping(false); };
+
+  // ✅ Listen for unread count refresh triggered by the other person
+  const onRefreshUnreadCount  = () => fetchRecentChats();
+
+  socket.on('receiveMessage',     onReceiveMessage);
+  socket.on('messageDeleted',     onMessageDeleted);
+  socket.on('onlineUsers',        onOnlineUsers);
+  socket.on('partnerTyping',      onPartnerTyping);
+  socket.on('partnerStopTyping',  onPartnerStopTyping);
+  socket.on('refreshUnreadCount', onRefreshUnreadCount); // ✅ new
+
+  socket.emit('getOnlineUsers');
+
+  return () => {
+    socket.off('receiveMessage',     onReceiveMessage);
+    socket.off('messageDeleted',     onMessageDeleted);
+    socket.off('onlineUsers',        onOnlineUsers);
+    socket.off('partnerTyping',      onPartnerTyping);
+    socket.off('partnerStopTyping',  onPartnerStopTyping);
+    socket.off('refreshUnreadCount', onRefreshUnreadCount); // ✅ new
+  };
+}, [senderId]);
 
   const displayList = search.trim() ? searchUsers : recentChats;
   const grouped = groupByDate(messages);
@@ -322,24 +338,24 @@ export default function Messages() {
               {Object.entries(grouped).map(([date, msgs]) => (
                 <div key={date}>
                   <div className="text-center my-6 text-[10px] text-[#6B5030] uppercase tracking-widest">{date}</div>
-                  {msgs.map((msg, i) => (
-                    <div 
-                      key={i} 
-                      className={`flex mb-3 ${isMine(msg) ? 'justify-end' : 'justify-start'} animate-slide-in`}
-                      style={{ animationDelay: `${i * 0.05}s` }}
-                    >
-                      <div className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-[13px] shadow-lg ${
-                        isMine(msg) 
-                          ? 'bg-gradient-to-br from-[#7B1C1C] to-[#5A1515] text-white rounded-tr-none' 
-                          : 'bg-[#1F0A0A] text-[#FFF5E6] border border-[#3D1515] rounded-tl-none'
-                      }`}>
-                        {msg.message}
-                        <div className={`text-[9px] mt-1 opacity-50 ${isMine(msg) ? 'text-right' : 'text-left'}`}>
-                          {formatTime(msg.createdAt)}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                 
+{msgs.map((msg) => (           // ← was (msg, i)
+  <div
+    key={msg._id}              // ← was key={i}
+    className={`flex mb-3 ${isMine(msg) ? 'justify-end' : 'justify-start'} animate-slide-in`}
+  >
+    <div className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-[13px] shadow-lg ${
+      isMine(msg)
+        ? 'bg-gradient-to-br from-[#7B1C1C] to-[#5A1515] text-white rounded-tr-none'
+        : 'bg-[#1F0A0A] text-[#FFF5E6] border border-[#3D1515] rounded-tl-none'
+    }`}>
+      {msg.message}
+      <div className={`text-[9px] mt-1 opacity-50 ${isMine(msg) ? 'text-right' : 'text-left'}`}>
+        {formatTime(msg.createdAt)}
+      </div>
+    </div>
+  </div>
+))}
                 </div>
               ))}
               
